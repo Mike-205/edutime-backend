@@ -1,0 +1,6 @@
+# Subagent-driven-development scratch workspace (ledgers, briefs, review
+# packages) — per-plan, regenerated, never meant to be committed.
+.superpowers/
+
+# Claude Code local session state, if it ever writes here.
+.claude/settings.local.json

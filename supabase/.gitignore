@@ -1,0 +1,23 @@
+# Supabase CLI local state
+.branches
+.temp
+
+# Secrets — NEVER commit these.
+# .env holds the Google OAuth client secret consumed by config.toml's env()
+# substitution. config.toml itself is safe to commit precisely because the real
+# values live here instead.
+.env
+.env.local
+.env.*.local
+
+# config.toml warns about this one explicitly.
+signing_keys.json
+
+# Google Cloud Console hands you the credentials as a download; if one ever
+# lands in the repo by accident, it should not be committable.
+client_secret*.json
+
+# Firebase's service-account key download (3.1) — same reasoning. The real
+# credential lives base64-encoded in .env's FCM_SERVICE_ACCOUNT instead.
+service-account*.json
+*firebase-adminsdk*.json

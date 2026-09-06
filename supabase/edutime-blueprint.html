@@ -1,0 +1,625 @@
+<title>Edutime Blueprint</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#eef1f4; --surface:#ffffff; --surface-2:#f5f8fa;
+    --ink:#101826; --ink-soft:#4e5d73; --ink-faint:#8494a8;
+    --line:#c7d0da; --line-strong:#9fb0c0;
+    --accent:#0e7c9e; --accent-ink:#075a74; --accent-soft:#dbeef3;
+    --warn:#b5651f; --warn-soft:#f4e3d2;
+    --code-bg:#101826; --code-ink:#dce6ee; --code-soft:#26364d;
+    --font-display:'IBM Plex Sans Condensed',ui-sans-serif,system-ui,sans-serif;
+    --font-body:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0b1220; --surface:#121b2e; --surface-2:#16223a;
+      --ink:#e7ecf2; --ink-soft:#9fb1c6; --ink-faint:#6c7e93;
+      --line:#26364d; --line-strong:#34486a;
+      --accent:#4fc3e0; --accent-ink:#8fe0f2; --accent-soft:#153441;
+      --warn:#e2954f; --warn-soft:#3a2a18;
+      --code-bg:#060b14; --code-ink:#c9d6e3; --code-soft:#1c2a3f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0b1220; --surface:#121b2e; --surface-2:#16223a;
+    --ink:#e7ecf2; --ink-soft:#9fb1c6; --ink-faint:#6c7e93;
+    --line:#26364d; --line-strong:#34486a;
+    --accent:#4fc3e0; --accent-ink:#8fe0f2; --accent-soft:#153441;
+    --warn:#e2954f; --warn-soft:#3a2a18;
+    --code-bg:#060b14; --code-ink:#c9d6e3; --code-soft:#1c2a3f;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--font-body); line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent-soft); color:var(--accent-ink); }
+  a{ color:var(--accent-ink); }
+  h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; text-wrap:balance; margin:0; color:var(--ink); }
+
+  code, .mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .chip{
+    display:inline-flex; align-items:center; gap:.35em;
+    font-family:var(--font-mono); font-size:.82em;
+    background:var(--surface-2); border:1px solid var(--line);
+    color:var(--ink); padding:.1em .5em; border-radius:3px;
+    white-space:nowrap;
+  }
+  .chip.accent{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); }
+  .chip.warn{ background:var(--warn-soft); border-color:var(--warn); color:var(--warn); }
+
+  /* ---------- shell ---------- */
+  .masthead{
+    max-width:1180px; margin:0 auto; padding:3.2rem 1.5rem 2rem;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-family:var(--font-display); text-transform:uppercase; letter-spacing:.14em;
+    font-size:.78rem; color:var(--ink-faint); display:flex; gap:.6em; align-items:center;
+  }
+  .eyebrow .dot{ width:5px; height:5px; border-radius:50%; background:var(--accent); }
+  h1.title{
+    font-size:clamp(2.1rem,4.4vw,3.1rem); letter-spacing:-0.01em; margin:.4rem 0 .7rem;
+  }
+  .dek{ max-width:62ch; color:var(--ink-soft); font-size:1.08rem; }
+  .meta-row{
+    display:flex; flex-wrap:wrap; gap:.5rem 1.6rem; margin-top:1.6rem;
+    font-family:var(--font-mono); font-size:.82rem; color:var(--ink-faint);
+  }
+  .meta-row b{ color:var(--ink); font-weight:600; }
+
+  .page{
+    max-width:1180px; margin:0 auto; padding:2.5rem 1.5rem 6rem;
+    display:grid; grid-template-columns:238px minmax(0,1fr); gap:3rem;
+    align-items:start;
+  }
+  nav.index{
+    position:sticky; top:1.6rem;
+    border-left:1px solid var(--line); padding-left:1.1rem;
+  }
+  nav.index .label{
+    font-family:var(--font-display); text-transform:uppercase; letter-spacing:.12em;
+    font-size:.72rem; color:var(--ink-faint); margin-bottom:.8rem; display:block;
+  }
+  nav.index ol{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.55rem; }
+  nav.index a{
+    text-decoration:none; color:var(--ink-soft); font-size:.87rem;
+    display:flex; gap:.55em; align-items:baseline;
+  }
+  nav.index a:hover{ color:var(--accent-ink); }
+  nav.index .n{ font-family:var(--font-mono); color:var(--ink-faint); font-size:.78rem; }
+
+  main{ min-width:0; display:flex; flex-direction:column; gap:2.6rem; }
+
+  .sheet{
+    position:relative; background:var(--surface); border:1px solid var(--line);
+    border-radius:2px; padding:2.1rem 2.3rem 2.4rem;
+  }
+  .sheet::before,.sheet::after{ content:""; position:absolute; width:11px; height:11px; }
+  .sheet::before{ top:-1px; left:-1px; border-top:2px solid var(--accent); border-left:2px solid var(--accent); }
+  .sheet::after{ bottom:-1px; right:-1px; border-bottom:2px solid var(--accent); border-right:2px solid var(--accent); }
+  .sheet-head{ display:flex; align-items:baseline; gap:.85rem; margin-bottom:1.5rem; }
+  .sheet-head .n{
+    font-family:var(--font-mono); color:var(--accent-ink); font-size:.95rem;
+    border:1px solid var(--line-strong); border-radius:3px; padding:.05em .5em;
+  }
+  .sheet-head h2{ font-size:1.42rem; text-transform:uppercase; letter-spacing:.02em; }
+  .sheet-sub{ color:var(--ink-faint); font-size:.92rem; margin:-1rem 0 1.6rem; max-width:60ch; }
+
+  .prose{ max-width:68ch; color:var(--ink-soft); }
+  .prose p{ margin:0 0 1rem; }
+  .prose p:last-child{ margin-bottom:0; }
+  .prose strong{ color:var(--ink); font-weight:600; }
+  .prose a{ text-decoration-color:var(--line-strong); }
+
+  h3.h{ font-size:1.02rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink); margin:1.8rem 0 .7rem; }
+  h3.h:first-child{ margin-top:0; }
+
+  /* card grids for domain clusters / tables */
+  .grid{ display:grid; gap:1rem; margin:1rem 0; }
+  .grid.cols-2{ grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+  .grid.cols-3{ grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
+  .card{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:3px;
+    padding:1.1rem 1.2rem;
+  }
+  .card h4{ font-family:var(--font-mono); font-size:.95rem; color:var(--accent-ink); margin-bottom:.5rem; }
+  .card p{ margin:0; font-size:.9rem; color:var(--ink-soft); }
+  .card ul{ margin:.6rem 0 0; padding-left:1.1rem; font-size:.85rem; color:var(--ink-soft); }
+  .card li{ margin-bottom:.3rem; }
+  .card li:last-child{ margin-bottom:0; }
+
+  table.spec{ width:100%; border-collapse:collapse; font-size:.87rem; margin:1rem 0; }
+  table.spec caption{ text-align:left; caption-side:top; color:var(--ink-faint); font-size:.8rem; margin-bottom:.5rem; }
+  table.spec th{
+    text-align:left; font-family:var(--font-display); text-transform:uppercase;
+    letter-spacing:.05em; font-size:.74rem; color:var(--ink-faint);
+    border-bottom:1px solid var(--line-strong); padding:.5rem .7rem;
+  }
+  table.spec td{ padding:.6rem .7rem; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink-soft); }
+  table.spec td.mono, table.spec td code{ color:var(--ink); }
+  table.spec tr:last-child td{ border-bottom:none; }
+  .table-wrap{ overflow-x:auto; }
+
+  figure{ margin:1.6rem 0; }
+  figure svg{ max-width:100%; height:auto; display:block; }
+  figcaption{ font-size:.85rem; color:var(--ink-faint); margin-top:.7rem; max-width:64ch; }
+
+  .callout{
+    border-left:3px solid var(--accent); background:var(--accent-soft);
+    padding:.9rem 1.1rem; border-radius:0 3px 3px 0; font-size:.9rem; color:var(--ink);
+    margin:1.3rem 0;
+  }
+  .callout.warn{ border-left-color:var(--warn); background:var(--warn-soft); }
+  .callout p{ margin:0 0 .5rem; }
+  .callout p:last-child{ margin-bottom:0; }
+
+  .role-badge{
+    display:inline-flex; align-items:center; gap:.4em; font-family:var(--font-mono);
+    font-size:.78rem; padding:.2em .55em; border-radius:3px; border:1px solid var(--line-strong);
+  }
+  .role-badge.superadmin{ border-color:var(--warn); color:var(--warn); }
+  .role-badge.faculty{ border-color:var(--accent); color:var(--accent-ink); }
+
+  footer.colophon{
+    max-width:1180px; margin:0 auto; padding:0 1.5rem 4rem; color:var(--ink-faint); font-size:.83rem;
+  }
+  footer.colophon .rule{ border-top:1px solid var(--line); margin-bottom:1.4rem; }
+
+  @media (max-width:860px){
+    .page{ grid-template-columns:1fr; }
+    nav.index{
+      position:static; border-left:none; border-bottom:1px solid var(--line);
+      padding:0 0 1rem;
+    }
+    nav.index ol{ flex-direction:row; flex-wrap:wrap; gap:.4rem 1rem; }
+  }
+  @media (prefers-reduced-motion:no-preference){
+    a{ transition:color .15s ease; }
+  }
+</style>
+
+<header class="masthead">
+  <div class="eyebrow"><span class="dot"></span>Implementation reference — read from the live schema, migration 0035</div>
+  <h1 class="title">Edutime Blueprint</h1>
+  <p class="dek">How the lecture-scheduling backend actually fits together — actors, tables, enforcement, and the request paths between them, drawn from <code>pg_catalog</code>, not from the changelog.</p>
+  <div class="meta-row">
+    <span><b>35</b> migrations</span>
+    <span><b>20</b> tables</span>
+    <span><b>58</b> functions</span>
+    <span><b>18</b> enums</span>
+    <span><b>29</b> RLS policies</span>
+    <span><b>398</b> pgTAP assertions</span>
+    <span>as of <b>2026-08-24</b></span>
+  </div>
+</header>
+
+<div class="page">
+  <nav class="index" aria-label="Sections">
+    <span class="label">Sheet index</span>
+    <ol>
+      <li><a href="#actors"><span class="n">01</span>Actors &amp; authority</a></li>
+      <li><a href="#model"><span class="n">02</span>Data model, by domain</a></li>
+      <li><a href="#invariants"><span class="n">03</span>What the schema enforces</a></li>
+      <li><a href="#access"><span class="n">04</span>Who can do what</a></li>
+      <li><a href="#scheduling"><span class="n">05</span>Scheduling a lecture</a></li>
+      <li><a href="#notify"><span class="n">06</span>Notification → push</a></li>
+      <li><a href="#jobs"><span class="n">07</span>Jobs &amp; edge functions</a></li>
+      <li><a href="#drift"><span class="n">08</span>Docs vs. database</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- 01 ACTORS -->
+    <section class="sheet" id="actors">
+      <div class="sheet-head"><span class="n">01</span><h2>Actors &amp; authority</h2></div>
+      <p class="sheet-sub">There are three different, overlapping answers to "what are the user types" here — a Postgres role, an enum column, and one role that isn't a database row at all.</p>
+
+      <div class="prose">
+        <p><strong>Layer one is Postgres itself.</strong> Every request arrives as one of three database roles: <span class="chip">anon</span> holds <strong>zero</strong> table privileges in <code>public</code> — confirmed by querying the grants directly, not assumed — so an unauthenticated request cannot read a single row, regardless of RLS. <span class="chip accent">authenticated</span> is every signed-in human, of any app role. <span class="chip warn">service_role</span> is the key held by pg_cron jobs and Edge Functions — never by a client.</p>
+        <p><strong>Layer two is the <code>user_role</code> enum</strong> on <code>public.users</code>: <code>student</code>, <code>class_rep</code>, <code>faculty_rep</code> — three values, widened to four effective levels by <code>class_rep_rank</code> (<code>primary</code> / <code>assistant</code>), which a <code>CHECK</code> constraint makes structurally impossible to set on anyone who isn't a <code>class_rep</code>.</p>
+        <p><strong>Layer three is Superadmin, which is not a row anywhere.</strong> It is synonymous with holding the <code>service_role</code> key. <code>bootstrap_faculty_rep()</code> — the function that installs the very first Faculty Rep — takes no <code>p_acting_user</code> parameter, because there is no <code>users</code> row to name as the actor. The audit trail it writes records <code>actor_id = null</code>, <code>snapshot.actor = 'superadmin'</code> by convention, not by reference.</p>
+      </div>
+
+      <div class="callout">
+        <p><strong>There is no staff role in this platform, at all, and there never should be.</strong> A Class Rep or Faculty Rep is not a different kind of person from a Student — it is the same <code>users</code> row with <code>role</code> (and possibly <code>class_rep_rank</code>) changed. A Faculty Rep still carries a <code>reg_number</code>, a <code>cohort_id</code>, attends their own cohort's lectures, and shows up in <code>cohort_unstreamed_members</code> when their cohort splits. An earlier draft modelled Faculty Reps as Deans on staff addresses; that was corrected everywhere on 2026-08-24 (0032) — <code>bootstrap_faculty_rep()</code> only accepts a plain student, and nothing in the live schema treats a Faculty Rep as staff today. See §08 for the one stale comment that correction left behind, and why the write-up of the mistake itself stays in the docs.</p>
+      </div>
+
+      <figure role="img" aria-label="Authority diagram: Superadmin, who holds no row in users, installs the first Faculty Rep via bootstrap_faculty_rep. Faculty Reps promote plain Students to Class Rep via promote_class_rep, and demote them back via demote_class_rep. Both Class Rep and Faculty Rep are the same users table, distinguished only by the role column.">
+        <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <!-- superadmin -->
+          <rect x="270" y="14" width="180" height="52" rx="3" fill="none" stroke="var(--warn)" stroke-width="1.4" stroke-dasharray="4 3"/>
+          <text x="360" y="35" text-anchor="middle" font-family="var(--font-mono)" font-size="13" fill="var(--warn)">SUPERADMIN</text>
+          <text x="360" y="52" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="currentColor" opacity="0.65">holds service_role key — no users row</text>
+
+          <!-- arrow down to faculty rep -->
+          <line x1="410" y1="66" x2="520" y2="118" stroke="currentColor" stroke-width="1.3" marker-end="url(#arr)"/>
+          <text x="480" y="90" text-anchor="middle" font-family="var(--font-mono)" font-size="10.5" fill="var(--warn)">bootstrap_faculty_rep()</text>
+
+          <!-- outer users box -->
+          <rect x="40" y="130" width="640" height="220" rx="3" fill="none" stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="2 4"/>
+          <text x="60" y="118" font-family="var(--font-display)" font-size="12" letter-spacing="0.08em" fill="currentColor" opacity="0.7">PUBLIC.USERS — ONE TABLE, ROLE IS A COLUMN</text>
+
+          <!-- student box -->
+          <rect x="290" y="270" width="140" height="56" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="360" y="295" text-anchor="middle" font-family="var(--font-mono)" font-size="13" fill="currentColor">STUDENT</text>
+          <text x="360" y="311" text-anchor="middle" font-family="var(--font-mono)" font-size="9.5" fill="currentColor" opacity="0.6">role = 'student'</text>
+
+          <!-- class rep box -->
+          <rect x="70" y="160" width="180" height="60" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="160" y="185" text-anchor="middle" font-family="var(--font-mono)" font-size="13" fill="var(--accent-ink)">CLASS REP</text>
+          <text x="160" y="202" text-anchor="middle" font-family="var(--font-mono)" font-size="9.5" fill="currentColor" opacity="0.6">rank: primary / assistant</text>
+
+          <!-- faculty rep box -->
+          <rect x="470" y="160" width="180" height="60" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="560" y="185" text-anchor="middle" font-family="var(--font-mono)" font-size="13" fill="var(--accent-ink)">FACULTY REP</text>
+          <text x="560" y="202" text-anchor="middle" font-family="var(--font-mono)" font-size="9.5" fill="currentColor" opacity="0.6">scoped to one faculty_id</text>
+
+          <!-- student -> class rep -->
+          <line x1="300" y1="272" x2="200" y2="222" stroke="currentColor" stroke-width="1.3" marker-end="url(#arr)"/>
+          <text x="205" y="252" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="currentColor">promote_class_rep()</text>
+          <text x="205" y="265" text-anchor="middle" font-family="var(--font-mono)" font-size="9" fill="currentColor" opacity="0.55">by: faculty_rep, own faculty</text>
+
+          <!-- class rep -> student (demote) -->
+          <line x1="220" y1="222" x2="305" y2="272" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arr)" opacity="0.7"/>
+          <text x="290" y="238" text-anchor="middle" font-family="var(--font-mono)" font-size="9.5" fill="currentColor" opacity="0.6">demote_class_rep()</text>
+
+          <!-- faculty rep <- student, dashed since superadmin acts not student's own path -->
+          <line x1="470" y1="200" x2="360" y2="272" stroke="var(--warn)" stroke-width="1" stroke-dasharray="3 3" opacity="0.8"/>
+          <text x="450" y="245" text-anchor="middle" font-family="var(--font-mono)" font-size="9.5" fill="var(--warn)">must start as plain student</text>
+        </svg>
+      </figure>
+      <p class="prose" style="max-width:64ch"><small style="color:var(--ink-faint)">Faculty Rep and Class Rep are two independent elevations from Student — not a ladder. Nothing promotes a Class Rep to Faculty Rep; <code>bootstrap_faculty_rep()</code> only accepts a plain student, called exclusively by whoever holds the service-role key.</small></p>
+    </section>
+
+    <!-- 02 DATA MODEL -->
+    <section class="sheet" id="model">
+      <div class="sheet-head"><span class="n">02</span><h2>Data model, by domain</h2></div>
+      <p class="sheet-sub">Twenty tables, grouped by what they're actually for — not the order the migrations added them in.</p>
+
+      <h3 class="h">Institution structure</h3>
+      <div class="grid cols-3">
+        <div class="card"><h4>faculties → departments</h4><p>Both <code>CASCADE</code> downward. <code>faculty_id</code> is the unit Faculty Reps are scoped to everywhere else in the schema.</p></div>
+        <div class="card"><h4>programmes → courses</h4><p><code>programmes.code</code> is globally unique — it's what registration-number parsing keys off. <code>courses.semester_taught</code> gates when a Class Rep may self-insert one.</p></div>
+        <div class="card"><h4>buildings → rooms → venues</h4><p><code>venues</code> is polymorphic: <code>CHECK</code> constraints require a <code>room_id</code> for a <code>physical</code> venue and a <code>meeting_link</code> for an <code>online</code> one — never both, never neither.</p></div>
+      </div>
+
+      <h3 class="h">People &amp; identity</h3>
+      <div class="grid cols-2">
+        <div class="card"><h4>users</h4><p>The one identity table. <code>reg_number</code> is nullable and unique — null until a roster row is claimed, never asserted directly.</p></div>
+        <div class="card"><h4>student_roster</h4><p>The institution's <em>pre-declared</em> truth: who exists, before anyone signs up. <code>reg_number</code> is <code>UNIQUE</code> and shape-checked by regex. <code>claimed_by</code> links it to a real account once claimed.</p></div>
+        <div class="card"><h4>roster_audit_log</h4><p>Append-only. Every <code>claimed / takeover / dispute_resolved / reassigned</code> event, keeping the trail even through <code>ON DELETE SET NULL</code> on the account it references.</p></div>
+        <div class="card"><h4>user_recovery_email</h4><p>A delivery channel, deliberately isolated from <code>auth.users.email</code> — carries no identity or auth weight of its own, just a 6-digit OTP and a throttle.</p></div>
+      </div>
+
+      <h3 class="h">Cohorts</h3>
+      <div class="grid cols-2">
+        <div class="card"><h4>cohorts</h4><p>Self-referencing: a <strong>stream</strong> is a <code>cohorts</code> row whose <code>parent_cohort_id</code> points at another <code>cohorts</code> row — see §03 for how the schema stops a stream ever drifting from its parent's programme/intake/pace.</p></div>
+        <div class="card"><h4>cohort_join_requests</h4><p>A student's request to join, decided by that cohort's Class Rep — <code>decided_by</code> is <code>SET NULL</code> if the decider's account is later deleted, but the decision itself survives.</p></div>
+      </div>
+
+      <h3 class="h">Scheduling</h3>
+      <div class="grid cols-2">
+        <div class="card"><h4>events</h4><p>One physical lecture occurrence. <code>attendance_status</code> ("will the lecturer show") is tracked completely separately from <code>status</code> ("is the lecture on the calendar at all").</p></div>
+        <div class="card"><h4>event_cohorts</h4><p>The junction that actually makes combined lectures work — an event can attach <strong>N</strong> cohorts, each with its own <code>confirmation_status</code> (<code>pending / confirmed / declined / left</code>) and its own <code>course_id</code>.</p></div>
+        <div class="card"><h4>event_audit_log</h4><p><code>changed_by_name</code> is filled by a trigger at write time, so the trail survives the actor's account being deleted later — the ten functions that write here never had to handle that themselves.</p></div>
+        <div class="card"><h4>events_current <small style="color:var(--ink-faint);font-family:var(--font-mono)">(view)</small></h4><p><code>WHERE status IN ('scheduled','proposed')</code> — the only two states worth putting on a calendar.</p></div>
+      </div>
+
+      <h3 class="h">Governance &amp; delivery</h3>
+      <div class="grid cols-3">
+        <div class="card"><h4>role_audit_log</h4><p>Every <code>promoted / demoted</code> action, with a <code>snapshot</code> that includes <code>identity_attested</code> where relevant.</p></div>
+        <div class="card"><h4>notifications</h4><p>The single fan-out table — read by clients, read by <code>pg_cron</code>, and now carrying <code>pushed_at</code> for delivery tracking.</p></div>
+        <div class="card"><h4>device_tokens / confirmation_nudges_sent</h4><p>Two idempotency ledgers, one per background job — see §06.</p></div>
+      </div>
+
+      <figure role="img" aria-label="Cluster relationship map: Institution structure feeds Cohorts via programme_id, People feeds Cohorts via cohort_id, Cohorts feeds Scheduling via event_cohorts, and both People and Scheduling feed Governance and Delivery via audit and notification foreign keys.">
+        <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <!-- boxes -->
+          <g font-family="var(--font-mono)" font-size="12">
+            <rect x="20" y="20" width="150" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="95" y="52" text-anchor="middle" fill="currentColor">INSTITUTION</text>
+
+            <rect x="20" y="130" width="150" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="95" y="162" text-anchor="middle" fill="currentColor">PEOPLE</text>
+
+            <rect x="300" y="75" width="150" height="54" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="375" y="107" text-anchor="middle" fill="var(--accent-ink)">COHORTS</text>
+
+            <rect x="300" y="190" width="150" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="375" y="222" text-anchor="middle" fill="currentColor">SCHEDULING</text>
+
+            <rect x="580" y="130" width="160" height="54" rx="3" fill="none" stroke="var(--warn)" stroke-width="1.2"/>
+            <text x="660" y="155" text-anchor="middle" fill="var(--warn)">GOVERNANCE</text>
+            <text x="660" y="171" text-anchor="middle" fill="var(--warn)">&amp; DELIVERY</text>
+          </g>
+          <g font-family="var(--font-mono)" font-size="9.5" fill="currentColor" opacity="0.75">
+            <line x1="170" y1="55" x2="300" y2="95" stroke="currentColor" stroke-width="1.1" marker-end="url(#arr2)"/>
+            <text x="205" y="65">programme_id</text>
+
+            <line x1="170" y1="145" x2="300" y2="112" stroke="currentColor" stroke-width="1.1" marker-end="url(#arr2)"/>
+            <text x="200" y="150">cohort_id</text>
+
+            <line x1="450" y1="112" x2="450" y2="190" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#arr2)"/>
+            <text x="460" y="155" fill="var(--accent-ink)">event_cohorts</text>
+
+            <line x1="170" y1="175" x2="580" y2="163" stroke="currentColor" stroke-width="1" marker-end="url(#arr2)"/>
+            <text x="330" y="185">role_audit_log.actor_id / user_id</text>
+
+            <line x1="450" y1="217" x2="580" y2="172" stroke="var(--warn)" stroke-width="1.1" marker-end="url(#arr2)"/>
+            <text x="480" y="255">notifications.event_id, event_audit_log.event_id</text>
+          </g>
+        </svg>
+      </figure>
+    </section>
+
+    <!-- 03 INVARIANTS -->
+    <section class="sheet" id="invariants">
+      <div class="sheet-head"><span class="n">03</span><h2>What the schema enforces</h2></div>
+      <p class="sheet-sub">The guarantees that don't live in application code at all — Postgres refuses the write, full stop.</p>
+
+      <div class="prose">
+        <p><strong>Double-booking prevention is two <code>EXCLUDE</code> constraints, not a function.</strong> <code>create_event</code> can build all the pre-flight checking it wants; the actual guarantee is enforced at commit time by the GiST index underneath:</p>
+      </div>
+
+      <table class="spec">
+        <caption>Both keyed on <code>tstzrange(start_time, end_time) WITH &amp;&amp;</code> — an overlapping time range on the same key is a constraint violation, not an application error.</caption>
+        <thead><tr><th>Constraint</th><th>Guards against</th><th>Scope</th></tr></thead>
+        <tbody>
+          <tr><td class="mono"><code>events_no_venue_overlap</code></td><td>Two lectures in the same room/link at once</td><td>WHERE status IN (proposed, scheduled)</td></tr>
+          <tr><td class="mono"><code>event_cohorts_no_self_overlap</code></td><td>One cohort double-booked across two different lectures</td><td>WHERE status IN (proposed, scheduled) AND confirmation_status ≠ 'left'</td></tr>
+        </tbody>
+      </table>
+
+      <figure role="img" aria-label="Diagram: create_event attempts to insert an overlapping event for the same venue and time range as an existing scheduled event. The GiST exclusion index intercepts the insert at commit time, and the whole transaction — including every other occurrence in a recurring series — is rolled back, not just the clashing row.">
+        <svg viewBox="0 0 720 190" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <text x="10" y="20" font-family="var(--font-mono)" font-size="11" fill="currentColor" opacity="0.7">Venue X, timeline →</text>
+          <line x1="10" y1="46" x2="700" y2="46" stroke="var(--line-strong)" stroke-width="1"/>
+          <rect x="140" y="34" width="220" height="24" rx="2" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+          <text x="250" y="50" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--accent-ink)">existing: scheduled</text>
+          <rect x="300" y="34" width="220" height="24" rx="2" fill="none" stroke="var(--warn)" stroke-width="1.4" stroke-dasharray="4 3"/>
+          <text x="410" y="50" text-anchor="middle" font-family="var(--font-mono)" font-size="10" fill="var(--warn)">attempted: new INSERT</text>
+
+          <line x1="300" y1="70" x2="300" y2="46" stroke="var(--warn)" stroke-width="1"/>
+          <line x1="360" y1="70" x2="360" y2="46" stroke="var(--warn)" stroke-width="1"/>
+          <text x="330" y="86" text-anchor="middle" font-family="var(--font-mono)" font-size="10.5" fill="var(--warn)">overlap</text>
+
+          <line x1="330" y1="96" x2="330" y2="126" stroke="currentColor" stroke-width="1.3" marker-end="url(#arr3)"/>
+
+          <rect x="150" y="130" width="360" height="46" rx="3" fill="none" stroke="var(--warn)" stroke-width="1.4"/>
+          <text x="330" y="150" text-anchor="middle" font-family="var(--font-mono)" font-size="11" fill="var(--warn)">exclusion_violation (23P01)</text>
+          <text x="330" y="166" text-anchor="middle" font-family="var(--font-mono)" font-size="9.5" fill="currentColor" opacity="0.7">whole transaction rolled back — every occurrence in the series, not just this one</text>
+        </svg>
+      </figure>
+
+      <h3 class="h">Structural rules, not validated input</h3>
+      <div class="grid cols-2">
+        <div class="card"><h4>cohorts_stream_inherits</h4><p>Composite FK: <code>(parent_cohort_id, programme_id, intake_year, pace) → (id, programme_id, intake_year, pace)</code>. A stream cannot exist with a programme/intake/pace that differs from its parent's — not because a function checks it, but because there is no row it could reference otherwise. <code>enforce_cohort_stream_depth_trigger</code> separately caps the hierarchy at exactly one level — no stream of a stream.</p></div>
+        <div class="card"><h4>users_rank_only_for_class_rep</h4><p><code>CHECK (class_rep_rank IS NULL OR role = 'class_rep')</code> — a Student or Faculty Rep carrying a rank is not an application bug to catch, it's a row Postgres will not accept.</p></div>
+        <div class="card"><h4>student_roster_reg_number_shape</h4><p>A regex <code>CHECK</code> plus a <code>UNIQUE</code> constraint — the registration-number format and its uniqueness are schema facts, independent of whatever the claiming flow validates on the way in.</p></div>
+        <div class="card"><h4>venues_physical_has_room / venues_online_has_link</h4><p>A venue cannot be typed <code>physical</code> without a <code>room_id</code>, or <code>online</code> without a <code>meeting_link</code> — the two <code>CHECK</code>s make the invalid middle state unrepresentable.</p></div>
+      </div>
+    </section>
+
+    <!-- 04 ACCESS CONTROL -->
+    <section class="sheet" id="access">
+      <div class="sheet-head"><span class="n">04</span><h2>Who can do what</h2></div>
+      <p class="sheet-sub">Four layers, stacked — and the interesting part is what each layer can't do, which is why the next one exists.</p>
+
+      <figure role="img" aria-label="Request path diagram: a client request arrives at PostgREST as the authenticated role. It passes through table and column grants, then row-level security policies. A direct table read or write stops there if allowed. A privileged mutation instead calls a SECURITY DEFINER RPC function, which re-derives the caller's authority from the users and event_cohorts tables rather than trusting any client-supplied role, then writes with elevated rights and fires triggers.">
+        <svg viewBox="0 0 780 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g font-family="var(--font-mono)" font-size="11.5">
+            <rect x="10" y="90" width="120" height="50" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="70" y="120" text-anchor="middle" fill="currentColor">CLIENT</text>
+
+            <rect x="180" y="90" width="150" height="50" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="255" y="112" text-anchor="middle" fill="currentColor">L1 · GRANTS</text>
+            <text x="255" y="128" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.65">table + column</text>
+
+            <rect x="380" y="90" width="150" height="50" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="455" y="112" text-anchor="middle" fill="currentColor">L2 · RLS</text>
+            <text x="455" y="128" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.65">row policy</text>
+
+            <rect x="600" y="20" width="160" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <text x="680" y="48" text-anchor="middle" fill="currentColor">direct read/write</text>
+
+            <rect x="590" y="160" width="180" height="56" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="680" y="183" text-anchor="middle" fill="var(--accent-ink)">L4 · SECURITY DEFINER</text>
+            <text x="680" y="199" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">re-checks auth.uid()</text>
+            <text x="680" y="211" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">writes + fires triggers</text>
+          </g>
+          <line x1="130" y1="115" x2="180" y2="115" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr4)"/>
+          <line x1="330" y1="115" x2="380" y2="115" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr4)"/>
+          <line x1="530" y1="105" x2="600" y2="55" stroke="currentColor" stroke-width="1.1" marker-end="url(#arr4)"/>
+          <line x1="530" y1="128" x2="590" y2="180" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#arr4)"/>
+          <text x="565" y="70" font-family="var(--font-mono)" font-size="9" fill="currentColor" opacity="0.6">row visible &amp; column writable</text>
+          <text x="540" y="152" font-family="var(--font-mono)" font-size="9" fill="var(--accent-ink)">rpc call</text>
+        </svg>
+      </figure>
+
+      <h3 class="h">L1 + L3 — grants (what RLS structurally can't restrict: columns)</h3>
+      <div class="prose">
+        <p><code>authenticated</code> holds table-level <code>SELECT</code> on almost every table — RLS narrows the rows, not the grant. Writes are the narrow part, and the real "no self-promotion" guarantee lives here, not in a trigger someone could forget to add:</p>
+      </div>
+      <table class="spec">
+        <thead><tr><th>Table</th><th>authenticated may UPDATE</th><th>authenticated may NOT</th></tr></thead>
+        <tbody>
+          <tr><td class="mono"><code>users</code></td><td><code>first_name, last_name, middle_name</code></td><td><code>role, cohort_id, class_rep_rank, reg_number</code></td></tr>
+          <tr><td class="mono"><code>notifications</code></td><td><code>read_at</code></td><td><code>message, title, type, pushed_at</code></td></tr>
+          <tr><td class="mono"><code>cohorts</code></td><td><code>current_semester, pace</code> <small>(own cohort's class rep, via RLS)</small></td><td><code>name</code> <small>(trigger-derived, not client-writable)</small></td></tr>
+          <tr><td class="mono"><code>device_tokens</code></td><td>— (no direct writes at all)</td><td>every column — <code>register_device_token()</code> is the only writer</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="h">L2 — RLS: mostly "are you logged in", sometimes "is this your row"</h3>
+      <div class="prose">
+        <p>Most reference-data policies (<code>faculties</code>, <code>rooms</code>, <code>programmes</code>…) are just <code>auth.uid() IS NOT NULL</code> — open to anyone signed in, which is fine because L1 already stopped <code>anon</code> cold. Personal or scoped data narrows further: <code>device_tokens_read_own</code> is <code>user_id = auth.uid()</code>; <code>event_cohorts_read_if_attached</code> and two siblings all delegate to one helper, <code>user_can_see_event(event_id)</code>, rather than repeating the join three times.</p>
+      </div>
+
+      <h3 class="h">L4 — the real API surface</h3>
+      <div class="prose">
+        <p>Of 58 functions in <code>public</code>, the overwhelming majority are <code>SECURITY DEFINER</code>, and the pattern <code>if p_acting_user is distinct from auth.uid() then raise exception</code> opens nearly every client-facing one — the function accepts an actor id as an argument only so it can immediately refuse to trust it as anything other than a self-check. Authority itself is re-derived inside the function body by joining <code>users</code>/<code>event_cohorts</code> live, never taken from a client-asserted role.</p>
+      </div>
+      <div class="callout warn">
+        <p><strong>Five functions no human can call at all</strong> — granted to <code>service_role</code> only, invisible to both <code>anon</code> and <code>authenticated</code>: <span class="chip">bootstrap_faculty_rep</span> <span class="chip">request_password_recovery</span> <span class="chip">claim_pending_pushes</span> <span class="chip">invoke_push_dispatch</span> <span class="chip">send_confirmation_nudges</span>. The first is Superadmin's only door in; the rest are internal machinery for background jobs and Edge Functions — reachable only by whoever holds the service-role key. See §08 for why <code>request_password_recovery</code>'s lock reads stricter than it is.</p>
+      </div>
+    </section>
+
+    <!-- 05 SCHEDULING FLOW -->
+    <section class="sheet" id="scheduling">
+      <div class="sheet-head"><span class="n">05</span><h2>Scheduling a lecture, end to end</h2></div>
+      <p class="sheet-sub">One client call, and everything it sets in motion.</p>
+
+      <div class="prose">
+        <p><span class="chip accent">create_event(...)</span> takes a JSON array of <code>{cohort_id, course_id}</code> attachments — one call handles a single-cohort lecture and a multi-cohort combined lecture identically. For a recurring series, the horizon is <code>least(p_until, the EARLIEST term end among every attached cohort)</code> via <code>term_bounds()</code> — bounded by whichever cohort's semester ends soonest, not by the initiator's alone.</p>
+        <p>Every occurrence is inserted in <strong>one transaction</strong>. If any occurrence's time range collides with an existing venue booking or cohort commitment, the <code>EXCLUDE</code> constraints from §03 reject it — and because it's one transaction, the <em>entire series</em> aborts, not just the clashing date. <code>create_event</code> catches that and names every offending date back to the caller, rather than leaving a partially-materialized series.</p>
+        <p>A combined lecture starts <code>proposed</code>, not <code>scheduled</code> — each non-initiating cohort's Class Rep independently <span class="chip">confirm_event_cohort</span> / <span class="chip">decline_event_cohort</span> / <span class="chip">leave_event_cohort</span>s their attachment. A recurring combined series gets one confirmation for the whole run (<code>confirm_recurrence_group</code>) rather than one per occurrence — the per-occurrence version was what kept this feature out of scope until it was rebuilt.</p>
+        <p><strong>Whether the lecture is on the calendar and whether the lecturer will actually show are two separate facts</strong> — <code>events.status</code> vs. <code>events.attendance_status</code>. <code>confirm_attendance</code> re-derives the caller's standing at call time — a live join across <code>event_cohorts ⋈ users</code> filtered to <code>role = 'class_rep'</code> and an attachment that hasn't been declined or left — rather than trusting a cached role. <em>Any</em> attached cohort's rep may confirm, not only the initiator's.</p>
+        <p>Every one of these mutations ends by calling <code>notify_cohort_members()</code>, which inserts one <code>notifications</code> row per matching user — see §06 for where that row goes next.</p>
+      </div>
+    </section>
+
+    <!-- 06 NOTIFY -->
+    <section class="sheet" id="notify">
+      <div class="sheet-head"><span class="n">06</span><h2>Notification → push</h2></div>
+      <p class="sheet-sub">One table, two independent cron jobs reading it on two different clocks, for two different reasons.</p>
+
+      <figure role="img" aria-label="Pipeline diagram: a mutation function inserts a notifications row in the same transaction as the change it describes. Independently, pg_cron runs send_confirmation_nudges every 15 minutes to write additional reminder notifications for still-pending events, deduplicated per event and tier via the confirmation_nudges_sent ledger. Separately, pg_cron runs invoke_push_dispatch every minute, which posts to the dispatch-push edge function. That function calls claim_pending_pushes to atomically claim and stamp a batch of undelivered notifications, sends each one to Firebase Cloud Messaging via a service-account OAuth exchange, and deletes the device token only when Firebase reports it as unregistered.">
+        <svg viewBox="0 0 760 430" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g font-family="var(--font-mono)" font-size="11">
+            <rect x="20" y="14" width="220" height="44" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="130" y="41" text-anchor="middle" fill="currentColor">mutation fn (same txn)</text>
+
+            <rect x="270" y="14" width="220" height="44" rx="3" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="380" y="41" text-anchor="middle" fill="var(--accent-ink)">notifications row (pushed_at = null)</text>
+
+            <rect x="20" y="100" width="240" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <text x="140" y="122" text-anchor="middle" fill="currentColor">pg_cron · */15 min</text>
+            <text x="140" y="138" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.7">send_confirmation_nudges()</text>
+
+            <rect x="20" y="185" width="240" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+            <text x="140" y="205" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.75">confirmation_nudges_sent</text>
+            <text x="140" y="219" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.6">dedup ledger: (event, tier)</text>
+
+            <rect x="300" y="100" width="220" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <text x="410" y="122" text-anchor="middle" fill="currentColor">pg_cron · every 1 min</text>
+            <text x="410" y="138" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.7">invoke_push_dispatch()</text>
+
+            <rect x="300" y="200" width="220" height="46" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="410" y="222" text-anchor="middle" fill="var(--accent-ink)">functions/dispatch-push</text>
+            <text x="410" y="236" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.65">net.http_post via Vault key</text>
+
+            <rect x="300" y="286" width="220" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <text x="410" y="308" text-anchor="middle" fill="currentColor">claim_pending_pushes()</text>
+            <text x="410" y="322" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.65">SKIP LOCKED, stamps pushed_at</text>
+
+            <rect x="300" y="372" width="220" height="46" rx="3" fill="none" stroke="var(--warn)" stroke-width="1.2"/>
+            <text x="410" y="394" text-anchor="middle" fill="var(--warn)">FCM v1 · messages:send</text>
+            <text x="410" y="408" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">UNREGISTERED → delete device_tokens row</text>
+          </g>
+          <line x1="240" y1="36" x2="270" y2="36" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr5)"/>
+          <line x1="380" y1="58" x2="380" y2="95" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+          <line x1="140" y1="152" x2="140" y2="185" stroke="currentColor" stroke-width="1" marker-end="url(#arr5)" opacity="0.7"/>
+          <line x1="410" y1="152" x2="410" y2="196" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr5)"/>
+          <line x1="410" y1="246" x2="410" y2="282" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr5)"/>
+          <line x1="410" y1="332" x2="410" y2="368" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr5)"/>
+        </svg>
+      </figure>
+
+      <div class="prose">
+        <p><strong>Two different idempotency shapes, on purpose.</strong> A reminder tier can independently re-fire for the same event five times (24h / 12h / 5h / 1h / 30m out), so it needs a real ledger keyed on <code>(event, tier)</code>. A push is 1:1 with the notification it came from, so a single <code>notifications.pushed_at</code> column is the entire mechanism — stamped the instant a row is claimed, <em>even for a user with zero registered devices</em>, so a device-less user's rows don't get rejoined against <code>device_tokens</code> forever.</p>
+        <p><code>device_tokens.token</code> is the primary key, not <code>(user_id, token)</code> — a resold or handed-down phone gives a different student the same FCM registration token, and <code>register_device_token()</code> deletes the previous owner's claim before installing the new one.</p>
+      </div>
+    </section>
+
+    <!-- 07 JOBS -->
+    <section class="sheet" id="jobs">
+      <div class="sheet-head"><span class="n">07</span><h2>Jobs &amp; edge functions</h2></div>
+      <p class="sheet-sub">Everything that runs without a client in the loop.</p>
+
+      <h3 class="h">pg_cron</h3>
+      <div class="table-wrap">
+      <table class="spec">
+        <thead><tr><th>Job</th><th>Schedule</th><th>Calls</th></tr></thead>
+        <tbody>
+          <tr><td>send-confirmation-nudges</td><td class="mono"><code>*/15 * * * *</code></td><td class="mono"><code>send_confirmation_nudges()</code></td></tr>
+          <tr><td>dispatch-push-notifications</td><td class="mono"><code>* * * * *</code></td><td class="mono"><code>invoke_push_dispatch()</code></td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h3 class="h">Edge Functions (Deno, <code>supabase/functions/</code>)</h3>
+      <div class="grid cols-2">
+        <div class="card"><h4>recovery-request</h4><p>Unauthenticated entry point. Calls <code>request_password_recovery</code> with the service-role key, mints a GoTrue recovery link against the account's synthetic address, delivers via <code>_shared/axene.ts</code>. Same generic response whether the account exists or not.</p></div>
+        <div class="card"><h4>recovery-email-setup</h4><p>Self-service: sends the 6-digit OTP <code>set_recovery_email</code> generates, via Axene.</p></div>
+        <div class="card"><h4>dispatch-push</h4><p>Invoked only by <code>invoke_push_dispatch()</code>. Claims a batch, signs a JWT with the Firebase service-account key, exchanges it for an OAuth token, sends each push, deletes on <code>UNREGISTERED</code> only.</p></div>
+        <div class="card"><h4>_shared/</h4><p><code>axene.ts</code>, <code>fcm.ts</code>, <code>cors.ts</code> — both mail and push wrappers share one rule: an unset API key logs the payload instead of sending, so local dev stays green with nothing configured.</p></div>
+      </div>
+
+      <h3 class="h">Triggers (14 on <code>public</code>, 1 on <code>auth.users</code>)</h3>
+      <div class="grid cols-3">
+        <div class="card"><h4>on_auth_user_created</h4><p>→ <code>handle_new_auth_user</code>. Only trusts <code>raw_app_meta_data</code> for an OAuth signup; a reg-number signup's synthetic address never leaks into <code>public.users.email</code>.</p></div>
+        <div class="card"><h4>set_cohort_name_trigger</h4><p>Derives <code>cohorts.name</code> from <code>cohort_display_name()</code> — never client-writable directly.</p></div>
+        <div class="card"><h4>enforce_cohort_stream_depth_trigger</h4><p>Caps the stream hierarchy at one level, alongside the composite FK from §03.</p></div>
+        <div class="card"><h4>enforce_max_class_reps_trigger</h4><p>Caps a cohort at two reps (primary + assistant).</p></div>
+        <div class="card"><h4>guard_users_self_update / guard_notifications_update / guard_cohorts_rep_update</h4><p>The trigger-level half of the column-grant story in §04 — belt and suspenders on the same guarantee.</p></div>
+        <div class="card"><h4>*_broadcast_trigger</h4><p>Fan out <code>events</code> / <code>event_cohorts</code> changes into private <code>realtime.messages</code> channels, gated by their own RLS policy.</p></div>
+      </div>
+    </section>
+
+    <!-- 08 DRIFT -->
+    <section class="sheet" id="drift">
+      <div class="sheet-head"><span class="n">08</span><h2>Where the docs and the database disagree</h2></div>
+      <p class="sheet-sub">Findings from reading <code>pg_catalog</code> directly instead of the changelog, sorted into what actually needed fixing versus what only reads that way.</p>
+
+      <h3 class="h">Fixed</h3>
+      <div class="callout">
+        <p><strong><code>user_can_see_event()</code>'s own comment was stale — corrected in <code>0035</code>.</strong> It named "faculty reps" as an example of a NULL-<code>cohort_id</code> account, which was true when written but stopped being true the moment 0032's domain-model correction gave every Faculty Rep a real <code>cohort_id</code>, same as anyone else. The function's <em>behavior</em> was never wrong — it fails closed on <code>NULL</code> regardless of whose account it is — only the comment was teaching the old model. Landed as a comment-only <code>CREATE OR REPLACE</code>, the same shape 0032 used to fix <code>guard_users_self_update</code>'s stale error message: no behavior change, ACL preserved, verified against the applied function and the full pgTAP suite.</p>
+      </div>
+      <div class="prose">
+        <p>There is no live functionality anywhere in this schema that treats a Faculty Rep as staff — that model was fully replaced by 0032, confirmed by grepping the entire tree for <code>staff</code>, <code>@chuka.ac.ke</code>, and "no registration number": every remaining hit is either unrelated (the staff-vs-student <em>email-address shape</em> distinction <code>reg_number_from_email</code> still correctly makes — a real, separate concern) or the write-up of the correction itself. <code>bootstrap_faculty_rep()</code> only accepts a plain student; every Faculty Rep in <code>seed.sql</code> carries a <code>reg_number</code>, a <code>cohort_id</code>, and an <code>oauth</code> roster claim, identical in shape to any other student row. TODO.md §3.5 and TECHNICAL_DISCOVERY.md §10 keep the write-up of the mistake on purpose — it's the reason a future migration is unlikely to reintroduce it, not a lingering trace of it.</p>
+      </div>
+
+      <h3 class="h">Correct as built, commonly misread</h3>
+      <div class="prose">
+        <p><code>request_password_recovery</code> is granted to <code>service_role</code> only — <code>anon</code> holds no <code>EXECUTE</code> on it, and cannot call it directly. Read on its own, that looks like the unauthenticated "forgot password" flow shouldn't be reachable at all. It's reachable a layer up: the client calls the public <code>recovery-request</code> Edge Function with the ordinary anon/publishable key, exactly like any other Edge Function call, and <em>that function</em> — not the client — escalates to the service-role key before calling the RPC. The privilege boundary is between the Edge Function and the database, never between the client and the Edge Function. Tightening this further wouldn't harden it; a forgot-password flow that required being logged in already couldn't do its job, and this one already returns a byte-identical response whichever of "account doesn't exist / is OAuth-only / has no recovery address / is inside its cooldown" is true, plus a per-account throttle. This is the hardened version, not a gap in it. Unrelated to the Faculty Rep correction above — different function, different migration (0031 vs 0032), no shared mechanism; it only sat in the same section of the first draft of this document, which is what made it look connected.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="colophon">
+  <div class="rule"></div>
+  <p>Compiled by querying <code>information_schema</code>, <code>pg_catalog</code>, <code>pg_policies</code>, and <code>obj_description()</code> directly against the reset local database — not by summarizing <code>TECHNICAL_DISCOVERY.md</code> or <code>TODO.md</code>, though findings were cross-checked against both. Source of truth: this repository's 35 applied migrations, as of 2026-08-24.</p>
+</footer>

@@ -1,0 +1,23 @@
+-- ============================================================================
+-- 0027: roster_audit_action += 'reassigned'
+-- ============================================================================
+-- Alone in its own file, and it has to be. Postgres will not let
+-- `ALTER TYPE ... ADD VALUE` share a transaction with anything that USES the
+-- new value, and 0028 uses this one immediately. This is the same reason
+-- 0009, 0011, 0018 and 0020 exist as isolated migrations — see
+-- TECHNICAL_DISCOVERY §3.
+--
+-- WHY A NEW VALUE RATHER THAN REUSING 'updated'. The existing values are
+-- created, updated, removed, claimed, takeover, unbound, dispute_resolved.
+-- 'updated' is what roster_correct_student writes when a name or registration
+-- number is fixed — a correction to what the row SAYS. Moving a roster row to a
+-- different cohort changes where a person IS, which is a different kind of
+-- event and the one 0.5 singles out as dangerous: a bulk re-pointing of claimed
+-- identities. Collapsing the two would make "show me every stream assignment"
+-- unanswerable and bury the risky operation among routine typo fixes.
+--
+-- Named 'reassigned' rather than 'streamed' deliberately. Streams are the first
+-- caller (0028), not the only conceivable one — a transfer between cohorts is
+-- the same event, and TODO §4 already demotes cohort_join_requests to exactly
+-- that exception path.
+alter type roster_audit_action add value 'reassigned';
