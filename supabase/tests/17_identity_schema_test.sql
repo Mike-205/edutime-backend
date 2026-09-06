@@ -19,10 +19,6 @@ select plan(15);
 -- ---------------------------------------------------------------------------
 -- Fixtures
 -- ---------------------------------------------------------------------------
-create function pg_temp.cohort(p_code text, p_intake_year int) returns uuid language sql stable as $$
-  select c.id from cohorts c join programmes p on p.id = c.programme_id
-  where p.code = p_code and c.intake_year = p_intake_year;
-$$;
 create function pg_temp.programme(p_code text) returns uuid language sql stable as $$
   select id from programmes where code = p_code;
 $$;

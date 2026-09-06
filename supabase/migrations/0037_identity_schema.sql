@@ -129,6 +129,11 @@ alter table cohorts
 -- identity fact) as a side effect of an unrelated cohort deletion. The
 -- existing single-column cohort_id FK (0002) already handles cohort
 -- deletion correctly on its own.
+-- Depends on constraint creation order: this FK's NO ACTION check passes on
+-- cohort deletion only because users_cohort_id_fkey (0002, ON DELETE SET
+-- NULL) has a lower OID and fires first, nulling cohort_id before this
+-- check runs. Do not drop and recreate users_cohort_id_fkey after this
+-- migration without re-verifying that ordering still holds.
 alter table users
   add constraint users_cohort_programme_fk
   foreign key (cohort_id, programme_id)

@@ -48,8 +48,28 @@ language sql stable as $$
     'course_id', pg_temp.course(p_code, p_abbr)
   ));
 $$;
+
+-- Create dedicated test venues for this test's exclusive use, avoiding collisions
+-- with seed data. Online venues are ideal: they don't require a room, and their
+-- meeting links are unique and won't exist in seed data. pg_temp.venue(p_n)
+-- returns the venue for index n, supporting the test's multiple event fixtures
+-- that each need a different venue to avoid tripping the venue overlap constraint
+-- against each other.
+create temp table pg_temp.test_venues (n int primary key, id uuid);
+
+with v as (insert into venues (type, meeting_link, platform) values ('online', 'https://test-venue-0', 'google_meet') returning id)
+insert into pg_temp.test_venues select 0, id from v;
+with v as (insert into venues (type, meeting_link, platform) values ('online', 'https://test-venue-1', 'google_meet') returning id)
+insert into pg_temp.test_venues select 1, id from v;
+with v as (insert into venues (type, meeting_link, platform) values ('online', 'https://test-venue-2', 'google_meet') returning id)
+insert into pg_temp.test_venues select 2, id from v;
+with v as (insert into venues (type, meeting_link, platform) values ('online', 'https://test-venue-3', 'google_meet') returning id)
+insert into pg_temp.test_venues select 3, id from v;
+with v as (insert into venues (type, meeting_link, platform) values ('online', 'https://test-venue-4', 'google_meet') returning id)
+insert into pg_temp.test_venues select 4, id from v;
+
 create function pg_temp.venue(p_n int default 0) returns uuid language sql stable as $$
-  select id from venues order by id offset p_n limit 1;
+  select id from pg_temp.test_venues where n = p_n;
 $$;
 
 create function pg_temp.cs23_rep() returns uuid language sql immutable as   -- Mercy, EB1/2023
