@@ -12,7 +12,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(11);
+select plan(13);
 
 
 -- ---------------------------------------------------------------------------
@@ -70,6 +70,10 @@ select is(
   'eb1.88888.26@student.chuka.ac.ke',
   'OAuth school-address signup: email still populates — claim_roster_row still reads it'
 );
+select isnt(
+  (select email_verified_at from users where id = '44444444-0000-4000-8000-000000000002'),
+  null, 'OAuth school-address signup: email_verified_at is still set, unchanged from before'
+);
 select is(
   (select school_email from users where id = '44444444-0000-4000-8000-000000000002'),
   'eb1.88888.26@student.chuka.ac.ke',
@@ -107,6 +111,10 @@ select is(
   (select email from users where id = '44444444-0000-4000-8000-000000000003'),
   'someone.new@gmail.com',
   'OAuth personal-address signup: email still populates, same as before this migration'
+);
+select isnt(
+  (select email_verified_at from users where id = '44444444-0000-4000-8000-000000000003'),
+  null, 'OAuth personal-address signup: email_verified_at is still set, unchanged from before'
 );
 select is(
   (select personal_email from users where id = '44444444-0000-4000-8000-000000000003'),
