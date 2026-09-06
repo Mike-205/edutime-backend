@@ -55,8 +55,9 @@ security definer
 set search_path = public
 as $$
 declare
-  v_user users;
-  v_norm text;
+  v_user             users;
+  v_norm             text;
+  v_cohort_programme uuid;
 begin
   if p_acting_user is distinct from auth.uid() then
     raise exception 'p_acting_user must match the calling user';
@@ -66,6 +67,10 @@ begin
 
   if v_user.id is null then
     raise exception 'Acting user % not found', p_acting_user;
+  end if;
+
+  if v_user.role is distinct from 'student' then
+    raise exception 'Only a student account may claim a personal-email identity';
   end if;
 
   if v_user.claim_method = 'oauth' then
@@ -90,6 +95,14 @@ begin
 
   if not exists (select 1 from programmes where id = p_programme_id) then
     raise exception 'Programme % does not exist', p_programme_id;
+  end if;
+
+  if v_user.cohort_id is not null then
+    select programme_id into v_cohort_programme from cohorts where id = v_user.cohort_id;
+    if v_cohort_programme is distinct from p_programme_id then
+      raise exception
+        'This account''s existing cohort does not match the programme being claimed';
+    end if;
   end if;
 
   if p_admission_year < 2000

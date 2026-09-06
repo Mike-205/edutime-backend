@@ -11,7 +11,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(15);
+select plan(17);
 
 
 -- ---------------------------------------------------------------------------
@@ -180,6 +180,18 @@ select throws_ok(
   'an implausible admission_year is refused'
 );
 
+-- A non-student account (a seeded class rep) must never be able to claim a
+-- student_number — this is the takeover-safety property elsewhere in this
+-- codebase: an account holding scheduling authority must never be able to
+-- grab an identity that then can't be auto-evicted.
+select pg_temp.act_as(pg_temp.eb1_rep());
+select throws_ok(
+  format($$ select claim_identity_personal(%L, false, 'SP0005', 2024, %L) $$,
+         pg_temp.programme('EB1'), pg_temp.eb1_rep()),
+  'P0001', null,
+  'a non-student account (class rep) cannot claim a personal-email identity'
+);
+
 
 -- ---------------------------------------------------------------------------
 -- §3 An oauth-verified account can never be downgraded by this path
@@ -191,6 +203,26 @@ select throws_ok(
          pg_temp.programme('EB1'), '55555555-0000-4000-8000-000000000004'::uuid),
   'P0001', null,
   'a personal-email claim can never overwrite an existing oauth claim'
+);
+
+
+-- ---------------------------------------------------------------------------
+-- §3b The reverse of §4's guard: claim first, existing cohort second
+-- ---------------------------------------------------------------------------
+-- old_style_student() already has a cohort_id (BSC-CS 2023 / EB1, from seed
+-- data) but has never called claim_identity_personal — its claim_method and
+-- programme_id are still null at this point. Claiming a mismatched programme
+-- (EB3) must be refused with a readable message instead of the raw
+-- users_cohort_programme_fk violation. NOTE — ordering dependency: this test
+-- must run BEFORE §4, which relies on old_style_student() still having
+-- programme_id = null; since the function body rolls back entirely on any
+-- raised exception, this rejected claim attempt leaves it untouched.
+select pg_temp.act_as(pg_temp.old_style_student());
+select throws_ok(
+  format($$ select claim_identity_personal(%L, false, 'SP0006', 2024, %L) $$,
+         pg_temp.programme('EB3'), pg_temp.old_style_student()),
+  'P0001', null,
+  'a student with an existing cohort cannot claim a programme that does not match that cohort'
 );
 
 

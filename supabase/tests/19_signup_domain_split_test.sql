@@ -1,18 +1,21 @@
 -- ============================================================================
 -- 19: handle_new_auth_user learns the school/personal email split (0039)
 -- ============================================================================
--- Covers three signup shapes: the still-live password/synthetic path (old
+-- Covers four signup shapes: the still-live password/synthetic path (old
 -- columns unaffected, new columns untouched), an OAuth signup with a real
 -- school address (both old AND new columns populate — old because
--- claim_roster_row still reads them until Plan 5 retires the roster), and an
+-- claim_roster_row still reads them until Plan 5 retires the roster), an
 -- OAuth signup with a personal address (old columns populate as before, new
--- personal_email columns populate, school_email columns stay null).
+-- personal_email columns populate, school_email columns stay null), and an
+-- OAuth signup with a school-domain address that does not parse to a
+-- registration number (school_email must still populate — is_school_email
+-- tests only the domain, not the reg-number shape).
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(13);
+select plan(17);
 
 
 -- ---------------------------------------------------------------------------
@@ -128,6 +131,47 @@ select isnt(
 select is(
   (select school_email from users where id = '44444444-0000-4000-8000-000000000003'),
   null, 'OAuth personal-address signup: school_email stays null'
+);
+
+-- ---------------------------------------------------------------------------
+-- (d) OAuth signup, school address that does NOT parse to a reg number
+-- ---------------------------------------------------------------------------
+-- Same address 06_claim_and_takeover_test.sql uses to demonstrate this exact
+-- non-parsing shape: a genuine @student.chuka.ac.ke mailbox whose local part
+-- isn't registration-number-shaped. This must still be filed as school_email
+-- (is_school_email tests only the domain), not personal_email.
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at, confirmation_token, email_change,
+  email_change_token_new, recovery_token
+)
+values (
+  '00000000-0000-0000-0000-000000000000',
+  '44444444-0000-4000-8000-000000000004', 'authenticated', 'authenticated',
+  'j.doe@student.chuka.ac.ke', 'x', now(), now(),
+  jsonb_build_object('provider', 'google', 'providers', jsonb_build_array('google')),
+  jsonb_build_object('first_name', 'J', 'last_name', 'Doe'),
+  now(), now(), '', '', '', ''
+);
+
+select is(
+  (select email from users where id = '44444444-0000-4000-8000-000000000004'),
+  'j.doe@student.chuka.ac.ke',
+  'OAuth non-reg-number school-address signup: email still populates'
+);
+select is(
+  (select school_email from users where id = '44444444-0000-4000-8000-000000000004'),
+  'j.doe@student.chuka.ac.ke',
+  'OAuth non-reg-number school-address signup: school_email populates even though the local part does not parse to a reg number'
+);
+select isnt(
+  (select school_email_verified_at from users where id = '44444444-0000-4000-8000-000000000004'),
+  null, 'OAuth non-reg-number school-address signup: school_email_verified_at is set'
+);
+select is(
+  (select personal_email from users where id = '44444444-0000-4000-8000-000000000004'),
+  null, 'OAuth non-reg-number school-address signup: personal_email stays null — must not be filed as personal just because it does not parse'
 );
 
 select * from finish();

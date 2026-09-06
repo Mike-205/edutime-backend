@@ -13,16 +13,48 @@
 -- and the new write (school_email or personal_email, chosen by address
 -- domain) is added alongside it, never in its place.
 --
--- The domain test reuses reg_number_from_email (0019) rather than inlining a
--- second copy of the '^[^@]+@student\.chuka\.ac\.ke$' regex — 0019's own
--- header warns against a derived/duplicated check drifting from the real
--- one. A non-null result already means "this is a school address of the
--- expected shape"; nothing else about that function's behavior is used
--- here.
+-- The domain test uses is_school_email (below), NOT reg_number_from_email
+-- (0019) — reg_number_from_email returns null for two different reasons: an
+-- address that isn't @student.chuka.ac.ke at all, and an address that IS
+-- @student.chuka.ac.ke but whose local part doesn't shape-check to a
+-- registration number (e.g. 'j.doe@student.chuka.ac.ke', a perfectly valid
+-- student mailbox). Reusing reg_number_from_email here would file that
+-- second case as personal_email, which is wrong — a genuine institutional
+-- address must always be filed as school_email regardless of whether its
+-- local part happens to look like a registration number.
 --
 -- `set search_path` is restated, not decoration — see 0019 §4's own note on
 -- this exact function.
 -- ============================================================================
+
+-- ============================================================================
+-- 0. is_school_email
+-- ============================================================================
+-- The domain-only half of reg_number_from_email's (0019) check. Uses the
+-- exact same normalization (lower + strip whitespace) and the exact same
+-- domain regex, so the two functions can never disagree on case or
+-- whitespace handling — only on what they do with a non-reg-number-shaped
+-- local part, which is the whole point of having both.
+create or replace function is_school_email(p_email text)
+returns boolean
+language sql
+immutable
+as $$
+  select p_email is not null
+     and lower(regexp_replace(p_email, '\s', '', 'g')) ~ '^[^@]+@student\.chuka\.ac\.ke$';
+$$;
+
+comment on function is_school_email(text) is
+  'The domain-only half of reg_number_from_email''s check (0019) — true for '
+  'any @student.chuka.ac.ke address regardless of whether the local part is '
+  'reg-number-shaped. handle_new_auth_user uses this (not '
+  'reg_number_from_email) to decide the email tier, because a genuine '
+  'institutional address with a non-reg-number-shaped local part must still '
+  'be filed as school_email, not personal_email.';
+
+revoke execute on function is_school_email(text) from public, anon;
+grant  execute on function is_school_email(text) to authenticated, service_role;
+
 
 create or replace function handle_new_auth_user()
 returns trigger
@@ -35,7 +67,7 @@ declare
   v_is_school boolean;
 begin
   v_is_oauth  := (new.raw_app_meta_data ->> 'provider') in ('google', 'apple');
-  v_is_school := v_is_oauth and reg_number_from_email(new.email) is not null;
+  v_is_school := v_is_oauth and is_school_email(new.email);
 
   insert into public.users (
     id,
