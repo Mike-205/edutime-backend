@@ -75,6 +75,25 @@ $$;
 
 create temp table ev (label text primary key, id uuid);
 
+-- seed_slot() anchors the whole seeded timetable to "Monday of next week" so
+-- it can never land in the past on any day you reset — but "next Monday" can
+-- be as little as ~24-48h out when db reset happens to run on a Saturday or
+-- Sunday, which lands inside THIS file's own near-term fixture windows
+-- (23h/24h, 11h/12h, 45min/90min, 20h/21h) for the same cohort. When that
+-- happens, create_event below trips event_cohorts_no_self_overlap against a
+-- real seed lecture instead of testing anything about the nudge job. Clear
+-- it: nothing in this file needs the seed's own EB1/2023 or EB1/2024
+-- lectures, and 31 days covers every fixture below, including the 30-day-out
+-- 'far' case. Scoped to this test's own rolled-back transaction — seed.sql
+-- and every other test file are unaffected.
+update events set status = 'canceled', updated_at = now()
+where status in ('scheduled', 'proposed')
+  and start_time between now() and now() + interval '31 days'
+  and id in (
+    select event_id from event_cohorts
+    where cohort_id in (pg_temp.cohort('EB1', 2023), pg_temp.cohort('EB1', 2024))
+  );
+
 
 -- ============================================================================
 -- §1 One cohort, one tier crossed, idempotent re-run
