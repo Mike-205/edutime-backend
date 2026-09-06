@@ -126,7 +126,7 @@ begin
 
   insert into roster_audit_log (roster_id, reg_number, action, actor_id, target_user, snapshot)
   values (
-    null, v_derived.student_number, 'claimed', p_actor_id, p_student_id,
+    null, v_reg, 'claimed', p_actor_id, p_student_id,
     jsonb_build_object('method', 'oauth', 'cohort_id', p_cohort_id)
   );
 end;
@@ -264,7 +264,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(9);
+select plan(10);
 
 
 -- ---------------------------------------------------------------------------
@@ -340,6 +340,15 @@ select is(
   (select cohort_id from users where id = '66666666-0000-4000-8000-000000000001'),
   pg_temp.cohort('EB1', 2023),
   '...and cohort_id set, same as any other approval'
+);
+-- reg_number here is the full slash-form registration number the address
+-- derives (EB1/98001/26), NOT the bare student_number (98001) — matching
+-- every other writer of this column across the codebase.
+select isnt_empty(
+  $$ select 1 from roster_audit_log
+     where reg_number = 'EB1/98001/26' and action = 'claimed'
+       and target_user = '66666666-0000-4000-8000-000000000001' $$,
+  'a claimed audit row is recorded, with the full-form reg_number'
 );
 
 
@@ -463,7 +472,7 @@ Expected: FAIL — `21_commit_school_identity_test.sql` errors immediately, `fun
 
 Run: `supabase db reset` (now applies through `0041`) then `supabase test db`
 
-Expected: PASS — all 9 assertions in test 21 green, and the full prior suite (tests 1-20, 458 assertions) still green — in particular `20_claim_identity_personal_test.sql`'s own §4 regression assertion using this same "already placed" fixture must still pass unchanged.
+Expected: PASS — all 10 assertions in test 21 green, and the full prior suite (tests 1-20, 458 assertions) still green — in particular `20_claim_identity_personal_test.sql`'s own §4 regression assertion using this same "already placed" fixture must still pass unchanged.
 
 - [ ] **Step 5: Commit**
 
@@ -595,7 +604,7 @@ begin
 
     insert into roster_audit_log (roster_id, reg_number, action, actor_id, target_user, snapshot)
     values (
-      null, v_derived.student_number, 'takeover', p_actor_id, v_existing.id,
+      null, v_reg, 'takeover', p_actor_id, v_existing.id,
       jsonb_build_object('from_method', v_existing.claim_method, 'to_method', 'oauth')
     );
   end if;
@@ -610,7 +619,7 @@ begin
 
   insert into roster_audit_log (roster_id, reg_number, action, actor_id, target_user, snapshot)
   values (
-    null, v_derived.student_number, 'claimed', p_actor_id, p_student_id,
+    null, v_reg, 'claimed', p_actor_id, p_student_id,
     jsonb_build_object('method', 'oauth', 'cohort_id', p_cohort_id)
   );
 end;
@@ -767,17 +776,22 @@ select isnt_empty(
        and type = 'account_taken_over' $$,
   'the squatter receives the standard account-taken-over notification'
 );
+-- reg_number here is the full slash-form registration number derived from
+-- the address (EB1/98101/26), NOT the bare student_number (98101) — matching
+-- every other writer of this column across the codebase (0017, 0019, 0028,
+-- 0029). commit_school_identity computes this exact string as v_reg before
+-- ever calling parse_reg_number; it must be reused here, not discarded.
 select isnt_empty(
   $$ select 1 from roster_audit_log
-     where reg_number = '98101' and action = 'takeover'
+     where reg_number = 'EB1/98101/26' and action = 'takeover'
        and target_user = '77777777-0000-4000-8000-000000000001' $$,
-  'a takeover audit row is recorded against the squatter'
+  'a takeover audit row is recorded against the squatter, with the full-form reg_number'
 );
 select isnt_empty(
   $$ select 1 from roster_audit_log
-     where reg_number = '98101' and action = 'claimed'
+     where reg_number = 'EB1/98101/26' and action = 'claimed'
        and target_user = '77777777-0000-4000-8000-000000000002' $$,
-  'a claimed audit row is recorded against the real owner'
+  'a claimed audit row is recorded against the real owner, with the full-form reg_number'
 );
 
 
@@ -889,7 +903,7 @@ select is(
 );
 ```
 
-Also change `select plan(9);` to `select plan(11);` in the same file (the new §3 has 3 assertions where the old one had 1; verify this against the actual assertion count in the file after editing, don't just trust the arithmetic).
+Also change `select plan(10);` to `select plan(12);` in the same file (the new §3 has 3 assertions where the old one had 1; verify this against the actual assertion count in the file after editing, don't just trust the arithmetic).
 
 - [ ] **Step 3: Run the test to verify it fails**
 
@@ -901,7 +915,7 @@ Expected: FAIL — `22_school_identity_takeover_test.sql`'s §1 takeover asserti
 
 Run: `supabase db reset` (now applies through `0042`) then `supabase test db`
 
-Expected: PASS — all 15 assertions in test 22 green, all 11 assertions in the edited test 21 green, and the full prior suite (tests 1-20) still green.
+Expected: PASS — all 15 assertions in test 22 green, all 12 assertions in the edited test 21 green, and the full prior suite (tests 1-20) still green.
 
 - [ ] **Step 5: Commit**
 
@@ -921,3 +935,5 @@ git commit -m "feat: add graceful takeover to commit_school_identity (plan 3/5, 
 **Type consistency:** `commit_school_identity`'s signature (`p_student_id uuid, p_cohort_id uuid, p_actor_id uuid`) is identical across Task 1 and Task 2's migrations and every test call site (indirect, via `approve_cohort_join_request`). `reg_number_parts`' field names (`programme_id`, `is_self_sponsored`, `student_number`, `admission_year`) are used correctly and consistently in both migrations' `UPDATE ... set self_sponsored = v_derived.is_self_sponsored` lines — verified this exact line twice given Global Constraints flags it as the single likeliest transcription error in this plan.
 
 **Deferred, not this plan's job:** the Plan-1-final-review-escalated email-column-exposure gap (table-wide `select` grant + permissive RLS on `users`) remains open — this plan writes real data into `school_email`-derived identity fields exactly as Plan 2 did, so the same carried-forward risk applies, unchanged. `roster_audit_log`'s rename/enum-rebuild/`roster_id`-drop (§8) is explicitly Plan 5's job, not this plan's — see Global Constraints for why writing into the table as-is is still correct now.
+
+**Correction made during Task 1's review, before Task 2 was dispatched:** every `roster_audit_log.reg_number` insert in this plan writes `v_reg` (the full slash-form registration number, e.g. `EB1/98001/26` — already computed as an intermediate value before being fed into `parse_reg_number`), not `v_derived.student_number` (the bare number). Every other writer of this column across the codebase (0017, 0019, 0028, 0029) uses the full form; writing the bare number would have made this plan's audit rows silently inconsistent with every other audit row in the table, breaking the trail's own stated purpose (AUTH_FLOW_REFACTOR.md §8) without failing any test that didn't specifically check for it. Caught by Task 1's task reviewer, fixed in the plan text before Task 2's identical pattern could ship the same defect twice; Task 1's already-landed code was corrected via a fix round for the same reason.
