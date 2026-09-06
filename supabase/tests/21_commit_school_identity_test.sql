@@ -13,7 +13,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(10);
+select plan(12);
 
 
 -- ---------------------------------------------------------------------------
@@ -145,23 +145,10 @@ select throws_ok(
 
 
 -- ---------------------------------------------------------------------------
--- §3 Accepted interim state: a student_number collision hits the raw
--- constraint, not a graceful takeover (0042 replaces this).
+-- §3 A student_number collision is resolved by eviction, not a raw
+-- constraint failure (0042 replaces the accepted interim state from 0041 —
+-- see 0042's own migration comment).
 -- ---------------------------------------------------------------------------
--- Force an existing, unrelated seeded account to hold the number the next
--- signup will derive. This does NOT reuse another account's email address —
--- auth.users.email is unique, and two genuinely different real addresses
--- cannot derive the same student number (the mapping is 1:1), so a direct
--- force-set is the only way to construct this collision for a test. Uses a
--- plain seeded student not referenced anywhere else in this file.
---
--- claim_method is forced to 'provisional' alongside student_number, not left
--- null, because that is the only state production can actually produce —
--- the sole writer of student_number, claim_identity_personal, always sets
--- claim_method in the same statement. A student_number-only fixture would
--- silently stop matching reality the moment 0042 (Task 2) adds gates that
--- read claim_method, and 0042 DOES change this exact assertion's outcome —
--- see Task 2's own required test edit below.
 update users
 set student_number = '98004', claim_method = 'provisional'
 where id = '22222222-0000-4000-8000-000000000015';
@@ -173,14 +160,21 @@ insert into cohort_join_requests (student_id, cohort_id)
 values ('66666666-0000-4000-8000-000000000004', pg_temp.cohort('EB1', 2023));
 
 select pg_temp.act_as(pg_temp.eb1_rep());
-select throws_ok(
+select lives_ok(
   format($$ select approve_cohort_join_request(
               (select id from cohort_join_requests
                where student_id = '66666666-0000-4000-8000-000000000004'::uuid),
               %L) $$,
          pg_temp.eb1_rep()),
-  '23505', null,
-  'a student_number already held by another account hits the raw uniqueness constraint (interim state before 0042)'
+  'a student_number collision is now resolved by eviction, not a raw constraint failure'
+);
+select is(
+  (select claim_method from users where id = '22222222-0000-4000-8000-000000000015'),
+  null, '...the evicted provisional holder''s claim_method is reset'
+);
+select is(
+  (select student_number from users where id = '66666666-0000-4000-8000-000000000004'),
+  '98004', '...and the real owner now holds the number'
 );
 
 
