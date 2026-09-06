@@ -18,7 +18,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(18);
+select plan(26);
 
 
 -- ---------------------------------------------------------------------------
@@ -60,13 +60,18 @@ select is(
   'anon holds no table privileges whatsoever'
 );
 
+-- users is the one deliberate exception (0043): it holds no table-level
+-- SELECT bit at all any more, only a column-level grant on a safe subset,
+-- so has_table_privilege(..., 'select') correctly reads false for it even
+-- though authenticated can still read part of every row.
 select is(
   (select count(*)::int
    from pg_tables
    where schemaname = 'public'
+     and tablename != 'users'
      and not has_table_privilege('authenticated', schemaname || '.' || tablename, 'select')),
   0,
-  'authenticated can SELECT every public table (policies still filter the rows)'
+  'authenticated can SELECT every public table except users, which is column-restricted (0043)'
 );
 
 
@@ -128,6 +133,49 @@ select ok(
 select ok(
   not has_column_privilege('authenticated', 'public.notifications', 'message', 'update'),
   'a user may NOT rewrite a notification the server generated'
+);
+
+
+-- ---------------------------------------------------------------------------
+-- users: column-level SELECT hardening (0043)
+-- ---------------------------------------------------------------------------
+-- 0006's users_read_all policy filters no rows (auth.uid() is not null),
+-- so the privilege layer is the ONLY thing standing between a student and
+-- every other student's identity columns. Directory fields stay readable
+-- cross-account; identity/contact fields are select-granted to nobody but
+-- the row's own owner via current_app_user() (a SECURITY DEFINER RPC, not
+-- a table grant).
+select ok(
+  has_column_privilege('authenticated', 'public.users', 'first_name', 'select'),
+  'a user may read another user''s first_name (directory listing)'
+);
+select ok(
+  has_column_privilege('authenticated', 'public.users', 'cohort_id', 'select'),
+  'a user may read another user''s cohort_id (directory listing)'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.users', 'email', 'select'),
+  'a user may NOT read another user''s personal contact email'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.users', 'school_email', 'select'),
+  'a user may NOT read another user''s school_email'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.users', 'personal_email', 'select'),
+  'a user may NOT read another user''s personal_email'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.users', 'reg_number', 'select'),
+  'a user may NOT read another user''s reg_number'
+);
+select ok(
+  not has_column_privilege('authenticated', 'public.users', 'student_number', 'select'),
+  'a user may NOT read another user''s student_number'
+);
+select ok(
+  has_function_privilege('authenticated', 'current_app_user()', 'execute'),
+  'a user can still read their OWN full row via current_app_user()'
 );
 
 
