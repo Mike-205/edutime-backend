@@ -2,18 +2,19 @@
 -- 21: commit_school_identity — Flow 2 first-claim path (0041)
 -- ============================================================================
 -- AUTH_FLOW_REFACTOR.md §4: a school-email account's identity is derived and
--- committed only at approval time. Covers a clean first claim, the two
--- refusal paths (unparseable address, programme mismatch), the accepted
--- interim raw-constraint-failure state for a student_number collision (0042
--- replaces this with a graceful takeover), and — the one most likely to
--- regress silently — that an already-placed account with a proven-but-
--- unclaimed school email does NOT get swept into this new branch.
+-- committed only at approval time. Covers a clean first claim (including the
+-- self-sponsored S-prefix variant), the two refusal paths (unparseable
+-- address, programme mismatch), a student_number collision being resolved by
+-- graceful eviction of the prior provisional holder (not a raw constraint
+-- failure), and — the one most likely to regress silently — that an
+-- already-placed account with a proven-but-unclaimed school email does NOT
+-- get swept into this new branch.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(12);
+select plan(17);
 
 
 -- ---------------------------------------------------------------------------
@@ -84,6 +85,14 @@ select is(
 select is(
   (select student_number from users where id = '66666666-0000-4000-8000-000000000001'),
   '98001', '...with the student_number correctly derived from the address'
+);
+select is(
+  (select self_sponsored from users where id = '66666666-0000-4000-8000-000000000001'),
+  false, '...and self_sponsored is correctly derived (false for a non-S-prefixed code)'
+);
+select is(
+  (select admission_year from users where id = '66666666-0000-4000-8000-000000000001'),
+  2026, '...and admission_year is correctly derived'
 );
 select is(
   (select cohort_id from users where id = '66666666-0000-4000-8000-000000000001'),
@@ -200,6 +209,37 @@ select is(
   (select programme_id from users where id = pg_temp.already_placed_school_account()),
   null,
   '...and its programme_id is still null — proof it was NOT swept into commit_school_identity'
+);
+
+-- ---------------------------------------------------------------------------
+-- §5 The self-sponsored (S-prefix) variant is correctly derived and written
+-- ---------------------------------------------------------------------------
+-- The S goes BEFORE the digit (EBS1), not after (EB1S) — parse_reg_number's
+-- S-stripping only recognizes the former shape. No EBS-prefixed programme
+-- code exists in this dataset, so the S-stripped candidate ('EB1') is what
+-- actually resolves.
+select pg_temp.new_school_signup(
+  '66666666-0000-4000-8000-000000000006', 'ebs1.98006.26@student.chuka.ac.ke'
+);
+insert into cohort_join_requests (student_id, cohort_id)
+values ('66666666-0000-4000-8000-000000000006', pg_temp.cohort('EB1', 2023));
+
+select pg_temp.act_as(pg_temp.eb1_rep());
+select lives_ok(
+  format($$ select approve_cohort_join_request(
+              (select id from cohort_join_requests
+               where student_id = '66666666-0000-4000-8000-000000000006'::uuid),
+              %L) $$,
+         pg_temp.eb1_rep()),
+  'an S-prefixed school address (self-sponsored) is approved and derived correctly'
+);
+select is(
+  (select self_sponsored from users where id = '66666666-0000-4000-8000-000000000006'),
+  true, '...with self_sponsored correctly derived as true'
+);
+select is(
+  (select student_number from users where id = '66666666-0000-4000-8000-000000000006'),
+  '98006', '...and the student_number derived correctly despite the S prefix'
 );
 
 select * from finish();

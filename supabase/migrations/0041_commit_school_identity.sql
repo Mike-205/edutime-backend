@@ -117,8 +117,16 @@ revoke execute on function commit_school_identity(uuid, uuid, uuid)
 --
 -- THE DISCRIMINATOR: claim_method is null AND school_email_verified_at is
 -- not null AND cohort_id is null. See Global Constraints for why all three
--- clauses are load-bearing — in particular, why cohort_id is null is what
--- keeps every existing seeded fixture out of this branch.
+-- clauses are load-bearing. Of the 18 seeded users, 3 have a null cohort_id;
+-- two of those are already excluded by the school_email_verified_at clause
+-- (they never signed up via a proven school address), and the third (Victor
+-- Onyango) genuinely satisfies all three clauses — he would legitimately
+-- enter this branch if his pending seeded join request were ever approved,
+-- which seed.sql never does, so nothing surprising happens on a normal
+-- db reset. The cohort_id is null clause is what it looks like it is: it's
+-- the one keeping Faith Mueni out — she has a proven, unclaimed school
+-- email, but is already placed in a cohort from the pre-redesign seed
+-- process, and only the cohort_id-is-null clause excludes her.
 --
 -- 0040's stored-programme-match guard moves into the else branch unchanged
 -- — it already no-ops correctly for a still-unclaimed Flow 2 account
