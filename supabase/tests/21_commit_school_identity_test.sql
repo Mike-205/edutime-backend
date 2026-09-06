@@ -13,7 +13,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(9);
+select plan(10);
 
 
 -- ---------------------------------------------------------------------------
@@ -89,6 +89,16 @@ select is(
   (select cohort_id from users where id = '66666666-0000-4000-8000-000000000001'),
   pg_temp.cohort('EB1', 2023),
   '...and cohort_id set, same as any other approval'
+);
+
+-- reg_number here is the full slash-form registration number the address
+-- derives (EB1/98001/26), NOT the bare student_number (98001) — matching
+-- every other writer of this column across the codebase.
+select isnt_empty(
+  $$ select 1 from roster_audit_log
+     where reg_number = 'EB1/98001/26' and action = 'claimed'
+       and target_user = '66666666-0000-4000-8000-000000000001' $$,
+  'a claimed audit row is recorded, with the full-form reg_number'
 );
 
 

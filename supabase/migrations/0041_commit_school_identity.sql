@@ -86,7 +86,7 @@ begin
 
   insert into roster_audit_log (roster_id, reg_number, action, actor_id, target_user, snapshot)
   values (
-    null, v_derived.student_number, 'claimed', p_actor_id, p_student_id,
+    null, v_reg, 'claimed', p_actor_id, p_student_id,
     jsonb_build_object('method', 'oauth', 'cohort_id', p_cohort_id)
   );
 end;
