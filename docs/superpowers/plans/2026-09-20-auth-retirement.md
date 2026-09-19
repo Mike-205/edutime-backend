@@ -8,7 +8,7 @@
 
 **Tech Stack:** Supabase/Postgres, plpgsql `SECURITY DEFINER` functions, pgTAP tests, Deno/TS Edge Functions (`supabase/functions/`).
 
-**Spec:** `supabase/AUTH_FLOW_REFACTOR.md` §10 (what this retires), §8 (the audit trail rebuild), §5 (the dispute-resolution function this plan adds). §10 does not mention three things this plan also retires or changes — each is a scoping decision made during this plan's brainstorming, not a gap in reading the spec: the cohort-streams bulk-assignment functions (architecturally dependent on the roster in a way §10 never addresses), the recovery-email subsystem (0031 — serves password-path accounts exclusively, has no purpose once that path is gone, and Plan 4's `link_personal_email_identity` is its modern replacement), and `promote_class_rep` (reads `student_roster` directly — found by grepping for the literal string across every migration, not surfaced by name in any earlier plan).
+**Spec:** `supabase/AUTH_FLOW_REFACTOR.md` §10 (what this retires), §8 (the audit trail rebuild), §5 (the dispute-resolution function this plan adds). §10 does not mention three things this plan also touches — each is a scoping decision made during this plan's brainstorming, not a gap in reading the spec: the cohort-streams bulk-assignment functions (architecturally dependent on the roster in a way §10 never addresses — rewritten onto `users.student_number`, not dropped, since bulk stream assignment is real functionality this project's owner deliberately built, not a speculative feature with no consumer), the recovery-email subsystem (`0031` — serves password-path accounts exclusively, has no purpose once that path is gone, and Plan 4's `link_personal_email_identity` is its modern replacement — retired outright), and `promote_class_rep` (reads `student_roster` directly — found by grepping for the literal string across every migration, not surfaced by name in any earlier plan — fixed to read `users.claim_method` instead).
 
 ## Global Constraints
 
@@ -18,8 +18,8 @@
 - **Every `SECURITY DEFINER` function created or replaced in this plan restates `set search_path = public`** — a repo-wide hardening rule `00_access_control_test.sql` enforces for the whole schema; get it wrong and the *entire* suite fails, not just one file.
 - **Re-read a function's current live body from the migration files immediately before writing any task that edits it — never copy body text out of this plan's prose.** This plan's own authoring caught two functions whose obvious-looking "current" body was stale by one or two migrations (`approve_cohort_join_request` looked like it was last touched by `0040`; it was actually `0041`). Every body reproduced in this plan below was re-verified against the live migration files at the time of writing — but by the time an implementer executes Task 6 or 7, other tasks in *this same plan* will have already changed some of these functions, so the instruction stands for this plan's own internal ordering too, not just for drift since Plan 4.
 - **`DROP TABLE` and `DROP FUNCTION` in this plan never use `CASCADE`.** A cascade that silently drops something else is exactly the failure mode this plan's own authoring hit twice (a table drop blocked by a foreign key the author hadn't traced yet). A plain drop that fails loudly, naming the blocking dependency, is the correct outcome if a task's ordering assumption turns out wrong — stop and re-read this plan's Global Constraints and the failing task's "Why this order" note, don't add `CASCADE` to make the error go away.
-- **New audit table/type names:** `roster_audit_log` → `identity_audit_log`; `roster_audit_action` → `identity_audit_action`, rebuilt down to exactly `'claimed', 'takeover', 'unbound', 'dispute_resolved', 'identity_linked'` (dropping `'created', 'updated', 'removed', 'reassigned'` — all four confirmed to have no other writer once Tasks 4-7 land; verified by grep across every migration file before this plan was written).
-- **Deliberately out of scope, decided during this plan's brainstorming:** the cohort-streams *bulk pre-signup assignment* capability (`assign_students_to_streams`, keyed on registration numbers the registrar supplied before any account exists) has no equivalent under the new system and is not being redesigned here — it is dropped outright. `create_cohort_stream` (splitting a cohort into streams) survives; only its one roster-touching side effect is removed. `cohorts.parent_cohort_id`/`cohorts.stream` (the streams *schema*, `0025`) are untouched, so a future, narrower rebuild (scoped to already-claimed students, keyed on `users.student_number`) stays cheap.
+- **New audit table/type names:** `roster_audit_log` → `identity_audit_log`; `roster_audit_action` → `identity_audit_action`, rebuilt down to exactly `'claimed', 'takeover', 'unbound', 'dispute_resolved', 'identity_linked', 'reassigned'` (dropping only `'created', 'updated', 'removed'` — confirmed to have no other writer once Task 7 lands. `'reassigned'` is kept, not dropped: Task 4 restores its one surviving writer, `assign_students_to_streams`, rewritten rather than dropped — see Task 4).
+- **`assign_students_to_streams` and `cohort_unstreamed_members` are rewritten, not dropped — a correction made during this plan's brainstorming.** The bulk pre-signup case (assigning a student who has not signed up yet) genuinely has no new-system equivalent and is not being rebuilt. But the rest of what these functions do — bulk-moving already-placed students into streams, and reporting who hasn't been moved yet — is real, deliberately built functionality (the person who owns this project built `0028` specifically because cohorts can have streams and something has to populate them), not a speculative feature with no consumer. Both are rewritten in Task 4 to key on `users.student_number`/`users.cohort_id` instead of `student_roster`. `cohorts.parent_cohort_id`/`cohorts.stream` (the streams *schema*, `0025`) are untouched either way.
 - **Deliberately out of scope: `TECHNICAL_DISCOVERY.md`, `TODO.md`, and `edutime-blueprint.html`.** All three describe the system's design history and are left as historical record, matching this repo's own established convention (`AUTH_FLOW_REFACTOR.md`'s own §0 keeps its original "why this exists" reasoning intact after the system it describes shipped). Only `AUTH_FLOW.md` — the currently-authoritative "what does the client do today" doc — gets rewritten (Task 8). A reviewer should not flag the untouched docs as a miss.
 - **File numbers:** migrations `0047`-`0053` (7 new files, one per task from Task 1 through Task 7 excluding the doc/config tasks, which touch no migration).
 
@@ -402,14 +402,14 @@ git commit -m "feat: retire the recovery-email subsystem (plan 5/5, task 2)"
 - Modify: `supabase/tests/21_commit_school_identity_test.sql`, `supabase/tests/22_school_identity_takeover_test.sql`, `supabase/tests/24_link_school_email_identity_test.sql`, `supabase/tests/25_link_personal_email_identity_test.sql`, `supabase/tests/23_identity_linked_audit_event_test.sql` (every place any of these files reference `roster_audit_log` or `roster_audit_action` by name)
 
 **Interfaces:**
-- Consumes: nothing from any other task in this plan — this can run at any point relative to Tasks 1, 2, 4-7.
-- Produces: `identity_audit_log` (table, replacing `roster_audit_log`), `identity_audit_action` (enum, replacing `roster_audit_action`, values `'claimed', 'takeover', 'unbound', 'dispute_resolved', 'identity_linked'`). Task 6 (`resolve_identity_dispute`) writes to this table directly under its final name and must run after this task.
+- Consumes: nothing from any other task in this plan.
+- Produces: `identity_audit_log` (table, replacing `roster_audit_log`), `identity_audit_action` (enum, replacing `roster_audit_action`, values `'claimed', 'takeover', 'unbound', 'dispute_resolved', 'identity_linked', 'reassigned'`). Task 4 (`assign_students_to_streams`, rewritten) and Task 6 (`resolve_identity_dispute`) both write to this table under its final name and must run after this task.
 
 **Why this order:** dropping `roster_audit_log.roster_id` (an FK to `student_roster`) does not require `student_roster` itself to be gone first — a column drop removes its own FK as a side effect, independent of the referenced table's existence. Doing the rebuild now, before Task 7 drops `student_roster`, means Task 7 never has to touch the audit log at all.
 
 - [ ] **Step 1: Rename, drop the column, rebuild the enum, fix the three surviving writers**
 
-`AUTH_FLOW_REFACTOR.md §8`'s target enum set (`claimed, takeover, unbound, dispute_resolved, identity_linked`) excludes `'created', 'updated', 'removed'` (only ever written by the roster-row-edit functions Task 7 drops) and `'reassigned'` (only ever written by `sync_roster_placement`, dropped in Task 5, and the block Task 4 strips from `create_cohort_stream`). Confirm this with `grep -rn "'reassigned'\|'created'\|'updated'\|'removed'" supabase/migrations/*.sql` before writing this migration — every writer of those four values must already be gone or about to go in a task that has landed by the time this migration is applied in a real `db reset` run (this plan's task ORDER guarantees that for `db reset`, since migrations apply in file-number order and Tasks 1/2 run first regardless).
+`AUTH_FLOW_REFACTOR.md §8`'s target enum set is `claimed, takeover, unbound, dispute_resolved, identity_linked` — this plan keeps `'reassigned'` alongside it as a deliberate addition beyond the spec's own list, because Task 4 rewrites (not drops) `assign_students_to_streams`, which is `'reassigned'`'s one surviving writer. Only `'created', 'updated', 'removed'` are dropped (only ever written by the roster-row-edit functions Task 7 removes). Confirm with `grep -rn "'created'\|'updated'\|'removed'" supabase/migrations/*.sql` before writing this migration that nothing else writes those three.
 
 Create `supabase/migrations/0049_identity_audit_log.sql`. Re-read `supabase/migrations/0041_commit_school_identity.sql` + `0042_school_identity_takeover.sql` (together, `commit_school_identity`'s current combined body), `0045_link_school_email_identity.sql`, and `0046_link_personal_email_identity.sql` immediately before writing this — confirm no migration after `0046` redefines any of the three (none does, as of this plan's authoring):
 
@@ -429,7 +429,7 @@ alter table roster_audit_log rename to identity_audit_log;
 alter table identity_audit_log drop column roster_id;
 
 create type identity_audit_action as enum (
-  'claimed', 'takeover', 'unbound', 'dispute_resolved', 'identity_linked'
+  'claimed', 'takeover', 'unbound', 'dispute_resolved', 'identity_linked', 'reassigned'
 );
 
 alter table identity_audit_log
@@ -750,19 +750,21 @@ git commit -m "feat: rebuild roster_audit_log as identity_audit_log (plan 5/5, t
 
 ---
 
-### Task 4: Strip the roster from `create_cohort_stream`; drop the two roster-keyed stream functions
+### Task 4: Strip the roster from `create_cohort_stream`; rewrite the two roster-keyed stream functions onto `users`
 
 **Files:**
 - Create: `supabase/migrations/0050_stream_functions_without_roster.sql`
 - Modify: `supabase/tests/09_streams_test.sql`
 
 **Interfaces:**
-- Consumes: nothing from any other task.
-- Produces: `create_cohort_stream` unchanged in every observable behavior except that it no longer touches `student_roster` or writes an `'reassigned'` audit row. `assign_students_to_streams` and `cohort_unstreamed_members` no longer exist.
+- Consumes: `identity_audit_log` / `identity_audit_action` (Task 3 — must run after it, since `assign_students_to_streams` writes a `'reassigned'` row).
+- Produces: `create_cohort_stream` unchanged in every observable behavior except that it no longer touches `student_roster`. `assign_students_to_streams(p_assignments jsonb, p_parent_cohort_id uuid, p_acting_user uuid) returns int` — same shape, now keyed on `{"student_number": ..., "stream": ...}` instead of `{"reg_number": ..., "stream": ...}`. `cohort_unstreamed_members(p_cohort_id uuid) returns table (student_number text, full_name text)` — same shape minus the `claimed` column (every row is now an account by construction).
 
-Fully independent of every other task. Re-read `supabase/migrations/0028_stream_assignment.sql`'s current `create_cohort_stream` body before writing this — confirm no later migration redefines it (none does).
+Bulk stream assignment and its reporting counterpart are real, deliberately-built functionality — not dropped, rewritten. The one thing that genuinely cannot survive under either design considered for this (see this plan's own revision history in the conversation this plan came from) is assigning a student who has not signed up yet: that input simply does not exist once there is no pre-declared roster. Everything else — moving already-placed students between streams in bulk, and reporting who hasn't been moved — survives, keyed on `users.student_number`/`users.cohort_id` instead of `student_roster`.
 
-- [ ] **Step 1: Strip the roster-touching block and drop the two roster-keyed functions**
+- [ ] **Step 1: Strip the roster-touching block from `create_cohort_stream`; rewrite the two roster-keyed functions**
+
+Re-read `supabase/migrations/0028_stream_assignment.sql`'s current bodies for all three functions before writing this — confirm no later migration redefines any of them (none does, as of this plan's authoring).
 
 Create `supabase/migrations/0050_stream_functions_without_roster.sql`:
 
@@ -776,21 +778,16 @@ Create `supabase/migrations/0050_stream_functions_without_roster.sql`:
 -- role_audit_log) is untouched. Stripped, not dropped: splitting a cohort
 -- into streams survives this plan.
 --
--- assign_students_to_streams has no surgical fix -- it looks up rows BY
--- REGISTRATION NUMBER IN THE ROSTER, i.e. for students who have not signed
--- up yet. That input does not exist once student_roster is gone (Task 7 of
--- this plan), and there is no new-system equivalent: nothing exists for a
--- given student until they actually sign up. Scoped out of this plan
--- entirely during brainstorming -- a future, narrower rebuild (keyed on
--- users.student_number, for already-claimed students only) stays cheap
--- because cohorts.parent_cohort_id/stream (the streams SCHEMA, 0025) is
--- untouched here.
---
--- cohort_unstreamed_members reads directly from student_roster with no
--- surgical fix either, and nothing calls it besides this migration's own
--- predecessor and its test (confirmed by grep before writing this
--- migration) -- dropped rather than redesigned around a users-based
--- definition nobody has asked for.
+-- assign_students_to_streams and cohort_unstreamed_members are rewritten,
+-- not dropped: bulk-moving already-placed students between streams, and
+-- reporting who hasn't been moved, are real functionality this project's
+-- owner built deliberately (0028) because cohorts can have streams and
+-- something has to populate them -- not a speculative feature with no
+-- consumer. Only the input changes: keyed on users.student_number instead
+-- of student_roster.reg_number, since that is the identity anchor the new
+-- system actually has. The one capability that does NOT survive, under any
+-- design: assigning a student who has not signed up yet. There is no row
+-- for them anywhere in the new system until they do.
 create or replace function create_cohort_stream(
   p_parent_cohort_id   uuid,
   p_stream             text,
@@ -928,19 +925,403 @@ begin
 end;
 $$;
 
-drop function assign_students_to_streams(jsonb, uuid, uuid);
-drop function cohort_unstreamed_members(uuid);
+
+-- ============================================================================
+-- assign_students_to_streams — rewritten onto users.student_number
+-- ============================================================================
+create or replace function assign_students_to_streams(
+  p_assignments      jsonb,   -- [{"student_number": "67312", "stream": "A"}, ...]
+  p_parent_cohort_id uuid,
+  p_acting_user      uuid
+)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor_role     user_role;
+  v_actor_faculty  uuid;
+  v_parent         record;
+  v_parent_faculty uuid;
+  v_count          int := 0;
+  v_distinct       int;
+  v_total          int;
+  v_bad            int;
+  v_row            record;
+begin
+  if p_acting_user is distinct from auth.uid() then
+    raise exception 'p_acting_user must match the calling user';
+  end if;
+
+  select role, faculty_id into v_actor_role, v_actor_faculty
+  from users where id = p_acting_user;
+
+  if v_actor_role is distinct from 'faculty_rep' then
+    raise exception 'Only a faculty_rep may assign students to streams';
+  end if;
+
+  if v_actor_faculty is null then
+    raise exception 'This faculty_rep has no faculty_id set and cannot assign students';
+  end if;
+
+  select c.id, c.programme_id, c.parent_cohort_id into v_parent
+  from cohorts c where c.id = p_parent_cohort_id;
+
+  if v_parent.id is null then
+    raise exception 'Cohort % does not exist', p_parent_cohort_id;
+  end if;
+
+  if v_parent.parent_cohort_id is not null then
+    raise exception
+      'Cohort % is a stream. Assign students against the cohort being split, not one of its streams',
+      p_parent_cohort_id;
+  end if;
+
+  select d.faculty_id into v_parent_faculty
+  from programmes p
+  join departments d on d.id = p.department_id
+  where p.id = v_parent.programme_id;
+
+  if v_parent_faculty is distinct from v_actor_faculty then
+    raise exception 'Cohort % belongs to another faculty', p_parent_cohort_id;
+  end if;
+
+  if p_assignments is null or jsonb_typeof(p_assignments) is distinct from 'array' then
+    raise exception
+      'p_assignments must be a JSON array of {"student_number": ..., "stream": ...} objects';
+  end if;
+
+  select count(*)::int,
+         count(distinct student_number)::int,
+         count(*) filter (where student_number is null or stream is null)::int
+  into v_total, v_distinct, v_bad
+  from (
+    select nullif(btrim(coalesce(a ->> 'student_number', '')), '') as student_number,
+           nullif(btrim(coalesce(a ->> 'stream', '')), '') as stream
+    from jsonb_array_elements(p_assignments) a
+  ) t;
+
+  if v_total = 0 then
+    raise exception 'p_assignments is empty — nothing to assign';
+  end if;
+
+  if v_bad > 0 then
+    raise exception 'Every assignment needs both a student_number and a stream';
+  end if;
+
+  if v_distinct <> v_total then
+    raise exception
+      'A student number appears more than once in p_assignments — each student belongs to exactly one stream';
+  end if;
+
+  -- --- Move ------------------------------------------------------------------
+  -- The join replaces "is on the roster" with "has an account with this
+  -- student number" -- a student who never signed up simply is not found,
+  -- and the from_cohort_id check below catches that the same way it catches
+  -- an account that exists but is not in this cohort or one of its streams.
+  for v_row in
+    select a.student_number,
+           a.stream,
+           s.id  as stream_id,
+           r.id  as account_id,
+           r.cohort_id  as from_cohort_id,
+           r.role
+    from (
+           select nullif(btrim(coalesce(x ->> 'student_number', '')), '') as student_number,
+                  nullif(btrim(coalesce(x ->> 'stream', '')), '') as stream
+           from jsonb_array_elements(p_assignments) x
+         ) a
+    left join cohorts s
+           on s.parent_cohort_id = p_parent_cohort_id and s.stream = a.stream
+    left join users r
+           on r.student_number = a.student_number
+  loop
+    if v_row.stream_id is null then
+      raise exception
+        'Cohort % has no stream %. Create it with create_cohort_stream first',
+        p_parent_cohort_id, v_row.stream;
+    end if;
+
+    -- The account must already belong to this cohort, or to one of its
+    -- streams (so a student can be moved from Stream A to Stream B).
+    -- Anything else -- including no matching account at all, since a null
+    -- join produces a null from_cohort_id that never matches -- would be
+    -- reaching into another cohort's students through a stream assignment,
+    -- the sideways-authority shape TECHNICAL_DISCOVERY §13.4 warns about.
+    if v_row.from_cohort_id is distinct from p_parent_cohort_id
+       and not exists (
+         select 1 from cohorts c
+         where c.id = v_row.from_cohort_id
+           and c.parent_cohort_id = p_parent_cohort_id
+       )
+    then
+      raise exception
+        'No account with student number % is in cohort % or any of its streams',
+        v_row.student_number, p_parent_cohort_id;
+    end if;
+
+    -- A class rep's placement is set by create_cohort_stream, promote_class_rep
+    -- and demote_class_rep, never here. Moving one in bulk could silently
+    -- collide with users_one_primary_per_cohort, and would change who holds
+    -- scheduling authority over a stream as a side effect of a bulk batch.
+    if v_row.role = 'class_rep' then
+      raise exception
+        'Student number % belongs to a class rep. Move a rep with '
+        'create_cohort_stream or demote them first — not through a bulk assignment',
+        v_row.student_number;
+    end if;
+
+    update users set cohort_id = v_row.stream_id where id = v_row.account_id;
+
+    -- reg_number here is the bare student_number, not a full slash-form
+    -- string, unlike every other writer of identity_audit_log -- this
+    -- function's input is a bare student number, and deriving the full
+    -- form would mean re-composing it from programme code + admission year
+    -- inline for an audit field with no downstream reader that needs the
+    -- exact format. Not worth building.
+    insert into identity_audit_log (reg_number, action, actor_id, target_user, snapshot)
+    values (
+      v_row.student_number, 'reassigned', p_acting_user, v_row.account_id,
+      jsonb_build_object(
+        'from_cohort_id', v_row.from_cohort_id,
+        'to_cohort_id',   v_row.stream_id,
+        'stream',         v_row.stream,
+        'reason',         'stream_assignment'
+      )
+    );
+
+    v_count := v_count + 1;
+  end loop;
+
+  return v_count;
+end;
+$$;
+
+comment on function assign_students_to_streams(jsonb, uuid, uuid) is
+  'Moves named students into streams of the given cohort, by student_number '
+  '(0037''s identity anchor, not student_roster''s reg_number -- the roster '
+  'retired in plan 5/5). Faculty rep, own faculty only. A student who has '
+  'not signed up yet cannot be assigned -- there is no row for them until '
+  'they do.';
+
+
+-- ============================================================================
+-- cohort_unstreamed_members — rewritten onto users
+-- ============================================================================
+create or replace function cohort_unstreamed_members(p_cohort_id uuid)
+returns table (
+  student_number text,
+  full_name      text
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select u.student_number,
+         u.first_name || ' ' || coalesce(u.middle_name || ' ', '') || u.last_name
+  from users u
+  where u.cohort_id = p_cohort_id
+    and exists (select 1 from cohorts c where c.parent_cohort_id = p_cohort_id)
+  order by u.student_number;
+$$;
+
+comment on function cohort_unstreamed_members(uuid) is
+  'Accounts still sitting on a cohort that has streams -- i.e. students who '
+  'have not been assigned to one yet. Empty for a cohort that was never '
+  'split. No claimed/unclaimed distinction any more -- every row here is a '
+  'real account, since there is no pre-signup roster to hold anyone else.';
+
+revoke execute on function assign_students_to_streams(jsonb, uuid, uuid) from public, anon;
+grant  execute on function assign_students_to_streams(jsonb, uuid, uuid) to authenticated, service_role;
+
+revoke execute on function cohort_unstreamed_members(uuid) from public, anon;
+grant  execute on function cohort_unstreamed_members(uuid) to authenticated, service_role;
 ```
 
-- [ ] **Step 2: Rewrite `09_streams_test.sql`**
+- [ ] **Step 2: Rewrite `09_streams_test.sql`'s §6**
 
-Delete the entire `§6 Assigning students to streams (0028 §2, §3)` section (from its header comment through the last assertion before `§7`'s header) — it tests exclusively `assign_students_to_streams` and `cohort_unstreamed_members`, both dropped in Step 1. Nothing in `§1`-`§5` or `§7` references either function or `student_roster` (confirmed by reading the whole file before writing this task).
+Replace the entire `§6 Assigning students to streams (0028 §2, §3)` section (from its header comment through the last assertion before `§7`'s header) with a version built on synthetic accounts rather than seed data — seed.sql's EB1/2023 cohort (post Task 1's conversion) only has two plain-student accounts left after Mercy/Faith become stream reps and Brian sits as assistant class rep (Kevin, Aisha), not enough to reproduce the original four-student scenario, and the accounts seed.sql set aside as cohortless (Lydia, Ruth) don't fit either — under the new system they simply aren't in this cohort or any of its streams, which is a *different* test (a refusal, not a successful move) from what they represented under the old roster-based design (an unclaimed row that still moved).
 
-Recount the file's assertions after deleting §6 and set `plan(N)` to the exact count — do not trust this plan's own arithmetic. Run:
+Add these fixtures alongside the file's existing ones (`act_as`, `prog`, `cohort`, `stream`, the named-rep functions):
+
+```sql
+create function pg_temp.new_oauth_signup(p_id uuid, p_email text) returns void
+language sql as $$
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password,
+    email_confirmed_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at, confirmation_token, email_change,
+    email_change_token_new, recovery_token
+  )
+  values (
+    '00000000-0000-0000-0000-000000000000',
+    p_id, 'authenticated', 'authenticated',
+    p_email, 'x', now(), now(),
+    jsonb_build_object('provider', 'google', 'providers', jsonb_build_array('google')),
+    jsonb_build_object('first_name', 'Test', 'last_name', 'Account'),
+    now(), now(), '', '', '', ''
+  );
+$$;
+
+-- A synthetic student already placed in EB1/2023 (the parent cohort), with
+-- a real student_number -- what assign_students_to_streams actually has to
+-- work with now. cohort_unstreamed_members and assign_students_to_streams
+-- never touch auth.identities, so this fixture skips it entirely.
+create function pg_temp.synthetic_student(p_id uuid, p_email text, p_student_number text) returns void
+language plpgsql as $$
+begin
+  perform pg_temp.new_oauth_signup(p_id, p_email);
+  update users
+  set claim_method   = 'oauth',
+      programme_id   = pg_temp.prog('EB1'),
+      self_sponsored = false,
+      student_number = p_student_number,
+      admission_year = 2023,
+      cohort_id      = pg_temp.cohort('EB1', 2023)
+  where id = p_id;
+end;
+$$;
+```
+
+Replace §6's body with:
+
+```sql
+-- ============================================================================
+-- §6 Assigning students to streams (0028 §2/§3, rewritten onto users)
+-- ============================================================================
+-- Keyed on student_number now, not a roster row -- student_roster is gone
+-- (plan 5/5, task 7). Streams A and B exist from §1: Faith reps A, Mercy
+-- reps B. Four synthetic students are placed in the parent cohort first,
+-- matching what a real already-signed-up-and-placed student looks like
+-- under the new system.
+select pg_temp.synthetic_student('cccccccc-0000-4000-8000-000000000001', 'stream.student1@gmail.com', '90001');
+select pg_temp.synthetic_student('cccccccc-0000-4000-8000-000000000002', 'stream.student2@gmail.com', '90002');
+select pg_temp.synthetic_student('cccccccc-0000-4000-8000-000000000003', 'stream.student3@gmail.com', '90003');
+select pg_temp.synthetic_student('cccccccc-0000-4000-8000-000000000004', 'stream.student4@gmail.com', '90004');
+
+select pg_temp.act_as(pg_temp.fst_rep());
+
+select is(
+  assign_students_to_streams(
+    '[{"student_number":"90001","stream":"A"},
+      {"student_number":"90002","stream":"B"},
+      {"student_number":"90003","stream":"A"}]'::jsonb,
+    pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
+  3,
+  'a faculty rep assigns three students across two streams in one call'
+);
+
+-- REGRESSION (0028): the first draft built its working set with a temp
+-- table that only works once per transaction. Two successful calls in one
+-- transaction is the assertion that would have caught it.
+select is(
+  assign_students_to_streams(
+    '[{"student_number":"90004","stream":"B"}]'::jsonb,
+    pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
+  1,
+  'a SECOND successful call in the same transaction works — splits are incremental'
+);
+
+select is(
+  (select cohort_id from users where student_number = '90001'),
+  pg_temp.stream('EB1', 2023, 'A'),
+  'a student moves into the stream they were assigned to'
+);
+
+select is(
+  (select action::text from identity_audit_log
+   where target_user = 'cccccccc-0000-4000-8000-000000000001' and action = 'reassigned'
+   order by created_at desc limit 1),
+  'reassigned',
+  'every move writes a reassigned audit row'
+);
+
+select is(
+  (select (snapshot->>'from_cohort_id')::uuid from identity_audit_log
+   where target_user = 'cccccccc-0000-4000-8000-000000000001' and action = 'reassigned'),
+  pg_temp.cohort('EB1', 2023),
+  '...recording where they came from, not just where they went'
+);
+
+-- --- Refusals ---------------------------------------------------------------
+select throws_like(
+  format($$ select assign_students_to_streams(
+    '[{"student_number":"90004","stream":"Q"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
+  '%has no stream Q%',
+  'assigning to a stream that does not exist is refused, and says which'
+);
+
+select throws_like(
+  format($$ select assign_students_to_streams(
+    '[{"student_number":"99999","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
+  '%No account with student number%',
+  'a student number with no matching account is refused'
+);
+
+select throws_like(
+  format($$ select assign_students_to_streams(
+    '[{"student_number":"90004","stream":"A"},
+      {"student_number":"90004","stream":"B"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
+  '%more than once%',
+  'the same student listed twice has no defensible resolution, so it is refused'
+);
+
+-- Brian is BSC-CS 2023's assistant rep (seed §9.6), student_number 67312.
+select throws_like(
+  format($$ select assign_students_to_streams(
+    '[{"student_number":"67312","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
+  '%class rep%',
+  'a class rep cannot be moved by a bulk assignment — that goes through create_cohort_stream'
+);
+
+select pg_temp.act_as(pg_temp.samuel());
+select throws_like(
+  format($$ select assign_students_to_streams(
+    '[{"student_number":"90004","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    pg_temp.cohort('EB1', 2023), pg_temp.samuel()),
+  '%Only a faculty_rep%',
+  'a class rep cannot assign students to streams at all'
+);
+
+select pg_temp.act_as(pg_temp.fhss_rep());
+select throws_like(
+  format($$ select assign_students_to_streams(
+    '[{"student_number":"90004","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    pg_temp.cohort('EB1', 2023), pg_temp.fhss_rep()),
+  '%another faculty%',
+  '...and a faculty rep cannot reach into another faculty'
+);
+
+-- --- Who is left ------------------------------------------------------------
+-- Brian (assistant class rep) and the two plain students seed data left in
+-- EB1/2023 after §1-§4's split (Kevin, Aisha) were never touched by any
+-- assign_students_to_streams call above -- three accounts still sitting on
+-- the parent, visible rather than silently stranded.
+select pg_temp.act_as(pg_temp.fst_rep());
+select is(
+  (select count(*)::int from cohort_unstreamed_members(pg_temp.cohort('EB1', 2023))),
+  3,
+  'the students nobody assigned are still visible rather than silently stranded'
+);
+
+select is(
+  (select count(*)::int from cohort_unstreamed_members(pg_temp.cohort('BA2', 2024))),
+  0,
+  'a cohort that was never split has nobody unstreamed, rather than everybody'
+);
+```
+
+Recount the file's assertions after this rewrite and set `plan(N)` to the exact count — do not trust this plan's own arithmetic. Run:
 ```bash
 grep -cE "^select (is|ok|lives_ok|throws_ok|throws_like)\(" supabase/tests/09_streams_test.sql
 ```
-after making the deletion, and set `plan(N)` in the file to match that number exactly.
+after making the edit, and set `plan(N)` in the file to match that number exactly.
 
 - [ ] **Step 3: Run the full suite**
 
@@ -951,7 +1332,7 @@ Expected: full suite green.
 
 ```bash
 git add supabase/migrations/0050_stream_functions_without_roster.sql supabase/tests/09_streams_test.sql
-git commit -m "feat: strip roster dependency from create_cohort_stream, drop roster-keyed stream functions (plan 5/5, task 4)"
+git commit -m "feat: strip roster dependency from create_cohort_stream, rewrite stream-assignment functions onto users.student_number (plan 5/5, task 4)"
 ```
 
 ---
