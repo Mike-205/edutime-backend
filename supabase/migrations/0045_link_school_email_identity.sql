@@ -24,6 +24,16 @@
 -- by someone else) is otherwise identical: evict unless the holder is
 -- already oauth (a red flag, escalate) or a class_rep (never auto-evict
 -- scheduling authority, escalate instead).
+--
+-- Guarded against Flow 2 (school-email) signups reaching this path at all:
+-- only a genuine Flow 1 account has school_email is null at this point (0039
+-- writes school_email at signup for a school-email account, before any claim
+-- function ever runs), so refusing when it is already set closes off a
+-- squatter who calls claim_identity_personal first to fake a Flow 1 shape,
+-- which would otherwise skip class-rep approval entirely (final-review
+-- finding). A repeat call after a successful link (e.g. a page-refresh
+-- double-fire from the OAuth callback) is a no-op, same idempotent-retry
+-- convention as claim_identity_personal (0040).
 -- ============================================================================
 create or replace function link_school_email_identity(p_actor_id uuid)
 returns void
@@ -48,16 +58,25 @@ begin
     raise exception 'Acting user % not found', p_actor_id;
   end if;
 
-  if v_user.claim_method is distinct from 'provisional' then
-    raise exception
-      'Only a provisional-claim account can link a school email this way';
-  end if;
-
   select email into v_new_email
   from auth.identities
   where user_id = p_actor_id and is_school_email(email)
   order by created_at desc
   limit 1;
+
+  if v_user.claim_method = 'oauth' and v_user.school_email is not distinct from v_new_email then
+    return;
+  end if;
+
+  if v_user.claim_method is distinct from 'provisional' then
+    raise exception
+      'Only a provisional-claim account can link a school email this way';
+  end if;
+
+  if v_user.school_email is not null then
+    raise exception
+      'This account already signed up with a school email; use the cohort join-request flow';
+  end if;
 
   if v_new_email is null then
     raise exception 'No linked school-email identity was found for this account';
@@ -150,8 +169,11 @@ comment on function link_school_email_identity(uuid) is
   'mismatch escalates to a faculty rep unless the derived number is already '
   'held by an evictable (provisional, non-class_rep) account, in which case '
   'this account wins the takeover, same shape as commit_school_identity '
-  '(0041/0042). Called by the client immediately after linkIdentity() '
-  'succeeds.';
+  '(0041/0042). Refuses an account that already has school_email set, since '
+  'only a genuine Flow 1 account reaches here with it null -- this closes '
+  'off Flow 2 signups from bypassing class-rep approval. A repeat call after '
+  'a successful link is an idempotent no-op. Called by the client '
+  'immediately after linkIdentity() succeeds.';
 
 revoke execute on function link_school_email_identity(uuid) from public, anon;
 grant  execute on function link_school_email_identity(uuid) to authenticated, service_role;

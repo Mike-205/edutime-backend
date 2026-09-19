@@ -40,8 +40,9 @@
 -- field "descriptive only" and gives no range. Loosen or tighten here if it
 -- turns out wrong; nothing else depends on the exact bound.
 --
--- Never writes school_email/personal_email — 0039's auth sync trigger is
--- their sole writer (Global Constraints).
+-- Never writes school_email/personal_email itself — 0039's auth sync trigger
+-- writes them at signup; 0045/0046's linking functions are the only other
+-- writers (Global Constraints).
 create or replace function claim_identity_personal(
   p_programme_id   uuid,
   p_self_sponsored boolean,
@@ -127,8 +128,9 @@ $$;
 comment on function claim_identity_personal(uuid, boolean, text, int, uuid) is
   'Flow 1 (AUTH_FLOW_REFACTOR.md §3): a personal-email OAuth account commits '
   'its identity facts immediately, as claim_method = provisional. Never '
-  'touches school_email/personal_email — the auth sync trigger (0039) is '
-  'their sole writer.';
+  'touches school_email/personal_email itself — the auth sync trigger (0039) '
+  'writes them at signup; 0045/0046''s linking functions are the only other '
+  'writers.';
 
 revoke execute on function claim_identity_personal(uuid, boolean, text, int, uuid)
   from public, anon;

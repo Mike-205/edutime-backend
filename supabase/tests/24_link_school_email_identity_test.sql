@@ -12,7 +12,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(28);
+select plan(31);
 
 
 -- ---------------------------------------------------------------------------
@@ -109,6 +109,10 @@ select is(
    order by created_at desc limit 1),
   'identity_linked',
   '...an identity_linked audit row is written'
+);
+select lives_ok(
+  $$ select link_school_email_identity('88888888-0000-4000-8000-000000000001'::uuid) $$,
+  'calling this again after a successful link is an idempotent no-op, not an error'
 );
 
 
@@ -336,6 +340,27 @@ select throws_ok(
   'P0001',
   'Could not derive a student identity from this school email. A faculty rep must resolve this.',
   'a school address that does not shape-check to a reg number cannot be derived from'
+);
+
+-- ---------------------------------------------------------------------------
+-- §8 A Flow-2-style account (school_email already set at signup) cannot
+-- reach this path via claim_identity_personal — closes off an unintended
+-- route around class-rep approval (final-review finding).
+-- ---------------------------------------------------------------------------
+select pg_temp.new_oauth_signup(
+  '88888888-0000-4000-8000-000000000012', 'eb1.88112.26@student.chuka.ac.ke'
+);
+select pg_temp.act_as('88888888-0000-4000-8000-000000000012');
+select lives_ok(
+  format($$ select claim_identity_personal(%L, false, '88112', 2026, %L) $$,
+         pg_temp.programme('EB1'), '88888888-0000-4000-8000-000000000012'::uuid),
+  'claim_identity_personal itself has no email-tier check -- this is the pre-existing gate, not new behavior'
+);
+select throws_ok(
+  $$ select link_school_email_identity('88888888-0000-4000-8000-000000000012'::uuid) $$,
+  'P0001',
+  'This account already signed up with a school email; use the cohort join-request flow',
+  'an account that already has a school_email is refused, even if it holds a provisional claim'
 );
 
 select * from finish();
