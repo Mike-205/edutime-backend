@@ -1,11 +1,22 @@
-# Auth flow refactor — proposed redesign, not yet implemented
+# Auth flow refactor — redesign, partially implemented
 
-> **Status: proposal, dated 2026-08-25. Nothing in this file is built.** `AUTH_FLOW.md`
-> describes what the database actually does today (roster + password/`auth.internal` +
-> OAuth, as of `0036`). This file describes where that design is headed and *why* — the
-> conclusion of a design conversation, not a migration plan. Treat every function, column,
-> and table name below as **proposed**, not existing, unless a footnote says otherwise. No
-> migration number is assigned yet.
+> **Status as of migration `0043` (2026-09-06): §0-4 and §7 are BUILT** — schema
+> (`0037`-`0039`), Flow 1 personal-email claim (`0040`), Flow 2 school-email signup and
+> takeover (`0041`-`0042`), and the uniqueness/conflict rules in §7 all shipped directly
+> to `main` (this repo has no live users yet, so no migration plan or backward-compat
+> window was needed). **§8 is PARTIALLY built**: the `'claimed'`/`'takeover'` audit writes
+> happen (`0041`/`0042`), reusing `roster_audit_log` as-is; the rename, the `roster_id`
+> drop, the enum rebuild and the new `identity_linked` event described later in §8 are
+> still Plan 5's job, not done. The old roster/password path (`student_roster`,
+> `claim_roster_row`, 0017/0019) is still live and unretired alongside all of this — Flow
+> 1/2 are additive, not a replacement, until Plan 5 retires the old path. `AUTH_FLOW.md`
+> still accurately describes that old path (unchanged, "as of `0036`") but has **not**
+> been updated to also document Flow 1/2 or the `0043` privilege change — it is
+> stale-by-omission, not wrong. **§5 and §6 (linking) and §10 (retirement) remain unbuilt
+> proposals** — no migration number assigned to either yet. §9 is deferred by its own
+> description, not scheduled. Treat §5/§6/§9/§10, and the rename/enum-rebuild/
+> `identity_linked` portion of §8, as proposed, not existing; treat everything else below
+> as shipped unless the prose says otherwise.
 
 ---
 
