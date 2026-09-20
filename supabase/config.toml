@@ -221,8 +221,11 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = true
+# Allow/disallow new user signups via email to your project. Disabled --
+# the password/auth.internal signup path retired in plan 5/5 of the auth
+# redesign (AUTH_FLOW_REFACTOR.md §10). Every signup is Google OAuth now
+# (the top-level enable_signup above stays true for that).
+enable_signup = false
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
