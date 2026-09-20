@@ -20,7 +20,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(47);
+select plan(44);
 
 
 -- ---------------------------------------------------------------------------
@@ -63,44 +63,42 @@ create function pg_temp.dennis()   returns uuid language sql immutable as  -- pr
 create function pg_temp.samuel()   returns uuid language sql immutable as  -- primary rep, BSC-ACS 2023
   $$ select '22222222-0000-4000-8000-000000000031'::uuid $$;
 
+create function pg_temp.new_oauth_signup(p_id uuid, p_email text) returns void
+language sql as $$
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password,
+    email_confirmed_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at, confirmation_token, email_change,
+    email_change_token_new, recovery_token
+  )
+  values (
+    '00000000-0000-0000-0000-000000000000',
+    p_id, 'authenticated', 'authenticated',
+    p_email, 'x', now(), now(),
+    jsonb_build_object('provider', 'google', 'providers', jsonb_build_array('google')),
+    jsonb_build_object('first_name', 'Test', 'last_name', 'Account'),
+    now(), now(), '', '', '', ''
+  );
+$$;
 
--- ---------------------------------------------------------------------------
--- Roster fixture
--- ---------------------------------------------------------------------------
--- student_roster is retired in Task 7 of this plan — until then,
--- create_cohort_stream's rep-roster-follow and assign_students_to_streams (§6
--- below) still read it directly. seed.sql no longer builds any roster rows
--- (Task 1), so this file builds the minimal rows it needs by hand, matching
--- the accounts §1 and §6 actually move.
---
--- This has to run BEFORE §1: create_cohort_stream moves whichever roster row
--- is claimed_by its new rep at the moment it is called, so Peter's (fst_rep)
--- and Kevin's/Aisha's/Lydia's/Victor's/Ruth's/Brian's rows all need to exist
--- up front. Peter and Faith are §1's/§6's reps and are asserted on directly;
--- Ruth and Brian are deliberately left where §6's assign calls against them
--- fail (Ruth: an unclaimed row nobody successfully assigns; Brian: a class
--- rep, refused by design) so both remain at the parent cohort for the
--- "who is left" count at the end of §6.
-insert into student_roster (
-  reg_number, first_name, last_name, middle_name, cohort_id,
-  claimed_by, claimed_at, claim_method
-) values
-  ('EB1/66001/23', 'Peter', 'Kimani',   'Njoroge', pg_temp.cohort('EB1', 2023),
-   pg_temp.fst_rep(), now(), 'oauth'),
-  ('EB1/67340/23', 'Faith', 'Mueni',    null,      pg_temp.cohort('EB1', 2023),
-   pg_temp.faith(), now(), 'oauth'),
-  ('EB1/67358/23', 'Kevin', 'Kariuki',  'Mwangi',  pg_temp.cohort('EB1', 2023),
-   pg_temp.kevin(), now(), 'provisional'),
-  ('EB1/67401/23', 'Aisha', 'Hassan',   null,      pg_temp.cohort('EB1', 2023),
-   '22222222-0000-4000-8000-000000000015'::uuid, now(), 'oauth'),
-  ('EB1/67312/23', 'Brian', 'Otieno',   null,      pg_temp.cohort('EB1', 2023),
-   '22222222-0000-4000-8000-000000000012'::uuid, now(), 'oauth'),
-  ('EB1/67455/23', 'Lydia', 'Chebet',   null,      pg_temp.cohort('EB1', 2023),
-   null, null, null),
-  ('EB1/67470/23', 'Victor','Onyango',  null,      pg_temp.cohort('EB1', 2023),
-   null, null, null),
-  ('EB1/67488/23', 'Ruth',  'Nyaguthii',null,      pg_temp.cohort('EB1', 2023),
-   null, null, null);
+-- A synthetic student already placed in EB1/2023 (the parent cohort), with
+-- a real student_number -- what assign_students_to_streams actually has to
+-- work with now. cohort_unstreamed_members and assign_students_to_streams
+-- never touch auth.identities, so this fixture skips it entirely.
+create function pg_temp.synthetic_student(p_id uuid, p_email text, p_student_number text) returns void
+language plpgsql as $$
+begin
+  perform pg_temp.new_oauth_signup(p_id, p_email);
+  update users
+  set claim_method   = 'oauth',
+      programme_id   = pg_temp.prog('EB1'),
+      self_sponsored = false,
+      student_number = p_student_number,
+      admission_year = 2023,
+      cohort_id      = pg_temp.cohort('EB1', 2023)
+  where id = p_id;
+end;
+$$;
 
 
 -- ============================================================================
@@ -402,79 +400,58 @@ select ok(
 
 
 -- ============================================================================
--- §6 Assigning students to streams (0028 §2, §3)
+-- §6 Assigning students to streams (0028 §2/§3, rewritten onto users)
 -- ============================================================================
--- Splits are INCREMENTAL, so this is callable repeatedly as department lists
--- arrive. Keyed on registration number, because that is how the department's
--- own stream lists are keyed — and because it lets a student who has not signed
--- up yet be assigned in advance.
---
--- Streams A and B exist from §1: Faith reps A, Mercy reps B.
-select pg_temp.act_as(pg_temp.fst_rep());
+-- Keyed on student_number now, not a roster row -- student_roster is gone
+-- (plan 5/5, task 7). Streams A and B exist from §1: Faith reps A, Mercy
+-- reps B. Four synthetic students are placed in the parent cohort first,
+-- matching what a real already-signed-up-and-placed student looks like
+-- under the new system.
+select pg_temp.synthetic_student('cccccccc-0000-4000-8000-000000000001', 'stream.student1@gmail.com', '90001');
+select pg_temp.synthetic_student('cccccccc-0000-4000-8000-000000000002', 'stream.student2@gmail.com', '90002');
+select pg_temp.synthetic_student('cccccccc-0000-4000-8000-000000000003', 'stream.student3@gmail.com', '90003');
+select pg_temp.synthetic_student('cccccccc-0000-4000-8000-000000000004', 'stream.student4@gmail.com', '90004');
 
--- create_cohort_stream moved each rep's ROSTER row too, not just their
--- users.cohort_id. Without that a rep's roster row would say "parent" forever,
--- and assign_students_to_streams deliberately refuses class reps, so nothing
--- could fix it.
-select is(
-  (select cohort_id from student_roster where reg_number = 'EB1/67340/23'),
-  pg_temp.stream('EB1', 2023, 'A'),
-  'a stream rep''s roster row follows them into the stream'
-);
+select pg_temp.act_as(pg_temp.fst_rep());
 
 select is(
   assign_students_to_streams(
-    '[{"reg_number":"EB1/67358/23","stream":"A"},
-      {"reg_number":"EB1/67401/23","stream":"B"},
-      {"reg_number":"EB1/67455/23","stream":"A"}]'::jsonb,
+    '[{"student_number":"90001","stream":"A"},
+      {"student_number":"90002","stream":"B"},
+      {"student_number":"90003","stream":"A"}]'::jsonb,
     pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
   3,
   'a faculty rep assigns three students across two streams in one call'
 );
 
--- REGRESSION: the first draft built its working set with
--- `create temp table _assign on commit drop`, which works exactly ONCE per
--- transaction — a second call fails with "relation already exists", because the
--- drop waits for COMMIT. For a function whose whole design is to be called
--- repeatedly as stream lists arrive, that broke the normal case. Two successful
--- calls in one transaction is the assertion that would have caught it.
+-- REGRESSION (0028): the first draft built its working set with a temp
+-- table that only works once per transaction. Two successful calls in one
+-- transaction is the assertion that would have caught it.
 select is(
   assign_students_to_streams(
-    '[{"reg_number":"EB1/67470/23","stream":"B"}]'::jsonb,
+    '[{"student_number":"90004","stream":"B"}]'::jsonb,
     pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
   1,
   'a SECOND successful call in the same transaction works — splits are incremental'
 );
 
 select is(
-  (select row(u.cohort_id, r.cohort_id)
-     from users u join student_roster r on r.claimed_by = u.id
-    where u.id = pg_temp.kevin()),
-  row(pg_temp.stream('EB1', 2023, 'A'), pg_temp.stream('EB1', 2023, 'A')),
-  'a claimed student moves in BOTH places — their account and their roster row'
-);
-
--- Lydia has not signed up. Her roster row still moves, which is the point of
--- keying on registration number: claim_roster_row will place her straight into
--- Stream A whenever she does.
-select is(
-  (select row(cohort_id, claimed_by is null) from student_roster
-    where reg_number = 'EB1/67455/23'),
-  row(pg_temp.stream('EB1', 2023, 'A'), true),
-  'an UNCLAIMED roster row moves too — the student lands in the stream when they claim'
+  (select cohort_id from users where student_number = '90001'),
+  pg_temp.stream('EB1', 2023, 'A'),
+  'a student moves into the stream they were assigned to'
 );
 
 select is(
-  (select row(snapshot->>'stream', (snapshot->>'was_claimed')::boolean)
-     from identity_audit_log
-    where reg_number = 'EB1/67358/23' and action = 'reassigned'),
-  row('A'::text, true),
-  'every move writes a ''reassigned'' audit row — 0.5''s rule for re-pointing claimed identities'
+  (select action::text from identity_audit_log
+   where target_user = 'cccccccc-0000-4000-8000-000000000001' and action = 'reassigned'
+   order by created_at desc limit 1),
+  'reassigned',
+  'every move writes a reassigned audit row'
 );
 
 select is(
   (select (snapshot->>'from_cohort_id')::uuid from identity_audit_log
-    where reg_number = 'EB1/67455/23' and action = 'reassigned'),
+   where target_user = 'cccccccc-0000-4000-8000-000000000001' and action = 'reassigned'),
   pg_temp.cohort('EB1', 2023),
   '...recording where they came from, not just where they went'
 );
@@ -482,7 +459,7 @@ select is(
 -- --- Refusals ---------------------------------------------------------------
 select throws_like(
   format($$ select assign_students_to_streams(
-    '[{"reg_number":"EB1/67488/23","stream":"Q"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    '[{"student_number":"90004","stream":"Q"}]'::jsonb, %L::uuid, %L::uuid) $$,
     pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
   '%has no stream Q%',
   'assigning to a stream that does not exist is refused, and says which'
@@ -490,27 +467,25 @@ select throws_like(
 
 select throws_like(
   format($$ select assign_students_to_streams(
-    '[{"reg_number":"EB9/99999/23","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    '[{"student_number":"99999","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
     pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
-  '%not on the roster%',
-  'a registration number nobody has rostered is refused'
+  '%No account with student number%',
+  'a student number with no matching account is refused'
 );
 
 select throws_like(
   format($$ select assign_students_to_streams(
-    '[{"reg_number":"EB1/67488/23","stream":"A"},
-      {"reg_number":"EB1/67488/23","stream":"B"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    '[{"student_number":"90004","stream":"A"},
+      {"student_number":"90004","stream":"B"}]'::jsonb, %L::uuid, %L::uuid) $$,
     pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
   '%more than once%',
   'the same student listed twice has no defensible resolution, so it is refused'
 );
 
--- Brian is BSC-CS 2023's assistant rep. Moving a rep in bulk could collide with
--- users_one_primary_per_cohort and would change who holds scheduling authority
--- as a side effect of a roster batch.
+-- Brian is BSC-CS 2023's assistant rep (seed §9.6), student_number 67312.
 select throws_like(
   format($$ select assign_students_to_streams(
-    '[{"reg_number":"EB1/67312/23","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    '[{"student_number":"67312","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
     pg_temp.cohort('EB1', 2023), pg_temp.fst_rep()),
   '%class rep%',
   'a class rep cannot be moved by a bulk assignment — that goes through create_cohort_stream'
@@ -519,7 +494,7 @@ select throws_like(
 select pg_temp.act_as(pg_temp.samuel());
 select throws_like(
   format($$ select assign_students_to_streams(
-    '[{"reg_number":"EB1/67488/23","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    '[{"student_number":"90004","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
     pg_temp.cohort('EB1', 2023), pg_temp.samuel()),
   '%Only a faculty_rep%',
   'a class rep cannot assign students to streams at all'
@@ -528,33 +503,26 @@ select throws_like(
 select pg_temp.act_as(pg_temp.fhss_rep());
 select throws_like(
   format($$ select assign_students_to_streams(
-    '[{"reg_number":"EB1/67488/23","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
+    '[{"student_number":"90004","stream":"A"}]'::jsonb, %L::uuid, %L::uuid) $$,
     pg_temp.cohort('EB1', 2023), pg_temp.fhss_rep()),
   '%another faculty%',
   '...and a faculty rep cannot reach into another faculty'
 );
 
 -- --- Who is left ------------------------------------------------------------
--- "The parent has no students" can never be a durable invariant, so
--- incompleteness is SURFACED rather than forbidden.
---
--- One of the three is the FST faculty rep, and that is correct rather than a
--- leak: a faculty rep is a student (TECHNICAL_DISCOVERY §10), belongs to a
--- cohort, and therefore needs assigning to a stream like anyone else. Their
--- faculty-wide authority is `faculty_id` and has nothing to do with which
--- lecture group they sit in.
+-- Five real seed accounts are still sitting on the parent, none of them
+-- touched by any assign_students_to_streams call above (which only moved
+-- the four synthetic students): Peter (fst_rep -- a faculty rep is still a
+-- student, TECHNICAL_DISCOVERY §10, and belongs to a cohort like anyone
+-- else), Brian (assistant class rep, refused above), Kevin and Aisha
+-- (plain students), and Lydia (seed §10: her join request into EB1/2023
+-- was approved, so she is a real member here, not one of the join-request
+-- fixtures that stayed cohortless).
 select pg_temp.act_as(pg_temp.fst_rep());
 select is(
   (select count(*)::int from cohort_unstreamed_members(pg_temp.cohort('EB1', 2023))),
-  3,
+  5,
   'the students nobody assigned are still visible rather than silently stranded'
-);
-
-select is(
-  (select count(*)::int from cohort_unstreamed_members(pg_temp.cohort('EB1', 2023))
-    where not claimed),
-  1,
-  '...including unclaimed rows, which are exactly the ones nobody would otherwise notice'
 );
 
 select is(
