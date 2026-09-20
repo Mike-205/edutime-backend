@@ -64,6 +64,45 @@ create function pg_temp.samuel()   returns uuid language sql immutable as  -- pr
   $$ select '22222222-0000-4000-8000-000000000031'::uuid $$;
 
 
+-- ---------------------------------------------------------------------------
+-- Roster fixture
+-- ---------------------------------------------------------------------------
+-- student_roster is retired in Task 7 of this plan — until then,
+-- create_cohort_stream's rep-roster-follow and assign_students_to_streams (§6
+-- below) still read it directly. seed.sql no longer builds any roster rows
+-- (Task 1), so this file builds the minimal rows it needs by hand, matching
+-- the accounts §1 and §6 actually move.
+--
+-- This has to run BEFORE §1: create_cohort_stream moves whichever roster row
+-- is claimed_by its new rep at the moment it is called, so Peter's (fst_rep)
+-- and Kevin's/Aisha's/Lydia's/Victor's/Ruth's/Brian's rows all need to exist
+-- up front. Peter and Faith are §1's/§6's reps and are asserted on directly;
+-- Ruth and Brian are deliberately left where §6's assign calls against them
+-- fail (Ruth: an unclaimed row nobody successfully assigns; Brian: a class
+-- rep, refused by design) so both remain at the parent cohort for the
+-- "who is left" count at the end of §6.
+insert into student_roster (
+  reg_number, first_name, last_name, middle_name, cohort_id,
+  claimed_by, claimed_at, claim_method
+) values
+  ('EB1/66001/23', 'Peter', 'Kimani',   'Njoroge', pg_temp.cohort('EB1', 2023),
+   pg_temp.fst_rep(), now(), 'oauth'),
+  ('EB1/67340/23', 'Faith', 'Mueni',    null,      pg_temp.cohort('EB1', 2023),
+   pg_temp.faith(), now(), 'oauth'),
+  ('EB1/67358/23', 'Kevin', 'Kariuki',  'Mwangi',  pg_temp.cohort('EB1', 2023),
+   pg_temp.kevin(), now(), 'provisional'),
+  ('EB1/67401/23', 'Aisha', 'Hassan',   null,      pg_temp.cohort('EB1', 2023),
+   '22222222-0000-4000-8000-000000000015'::uuid, now(), 'oauth'),
+  ('EB1/67312/23', 'Brian', 'Otieno',   null,      pg_temp.cohort('EB1', 2023),
+   '22222222-0000-4000-8000-000000000012'::uuid, now(), 'oauth'),
+  ('EB1/67455/23', 'Lydia', 'Chebet',   null,      pg_temp.cohort('EB1', 2023),
+   null, null, null),
+  ('EB1/67470/23', 'Victor','Onyango',  null,      pg_temp.cohort('EB1', 2023),
+   null, null, null),
+  ('EB1/67488/23', 'Ruth',  'Nyaguthii',null,      pg_temp.cohort('EB1', 2023),
+   null, null, null);
+
+
 -- ============================================================================
 -- §1 The identity guarantee survives (0025 §2)
 -- ============================================================================

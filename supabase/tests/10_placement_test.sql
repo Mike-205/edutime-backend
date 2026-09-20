@@ -39,6 +39,10 @@ $$;
 create function pg_temp.prog(p_code text) returns uuid language sql stable as $$
   select id from programmes where code = p_code;
 $$;
+create function pg_temp.cohort(p_code text, p_intake_year int) returns uuid language sql stable as $$
+  select c.id from cohorts c join programmes p on p.id = c.programme_id
+  where p.code = p_code and c.intake_year = p_intake_year and c.parent_cohort_id is null;
+$$;
 create function pg_temp.cohort_of(p_user uuid) returns text language sql stable as $$
   select c.name from users u join cohorts c on c.id = u.cohort_id where u.id = p_user;
 $$;
@@ -57,6 +61,24 @@ create function pg_temp.aisha()    returns uuid language sql immutable as  -- EB
   $$ select '22222222-0000-4000-8000-000000000015'::uuid $$;
 create function pg_temp.ian()      returns uuid language sql immutable as  -- EB3/72010/26, NO roster row
   $$ select '22222222-0000-4000-8000-000000000054'::uuid $$;
+
+-- ---------------------------------------------------------------------------
+-- Roster fixture
+-- ---------------------------------------------------------------------------
+-- student_roster is retired in Task 7 of this plan — until then,
+-- sync_roster_placement (0029), called by both functions under test, still
+-- reads it directly. seed.sql no longer builds any roster rows (Task 1), so
+-- this file builds the two claimed rows §1 and §2 need to prove the move —
+-- filed at Kevin's and Aisha's ORIGINAL cohort (BSC-CS 2023 bimester), so
+-- there is somewhere for the roster row to move FROM.
+insert into student_roster (
+  reg_number, first_name, last_name, middle_name, cohort_id,
+  claimed_by, claimed_at, claim_method
+) values
+  ('EB1/67358/23', 'Kevin', 'Kariuki', 'Mwangi', pg_temp.cohort('EB1', 2023),
+   pg_temp.kevin(), now(), 'provisional'),
+  ('EB1/67401/23', 'Aisha', 'Hassan',  null,     pg_temp.cohort('EB1', 2023),
+   pg_temp.aisha(), now(), 'oauth');
 
 
 -- ============================================================================
@@ -134,6 +156,15 @@ select is(
 -- that a first rep's number belongs to the cohort's programme, so an EB1
 -- student may legally lead a BA2 cohort — and moving their roster row would
 -- manufacture a row roster_add_student itself refuses.
+--
+-- Ian carries a real EB3 programme_id since seed's §9.5 (plan 5/5, task 1)
+-- now derives it from his reg_number even though he has no cohort yet.
+-- users_cohort_programme_fk (0037) would otherwise refuse this exact
+-- nomination into a BA2 cohort, since the update below sets his cohort_id
+-- without touching programme_id — so this test's own fixture clears it
+-- first, the same way 02_trust_chain_test.sql does for the same reason.
+update users set programme_id = null where id = pg_temp.ian();
+
 select pg_temp.act_as(pg_temp.fhss_rep());
 select lives_ok(
   format($$ select create_cohort_with_class_rep(%L::uuid, 2024, 3, 'trimester', %L::uuid, %L::uuid) $$,
@@ -155,6 +186,14 @@ select is(
 -- ============================================================================
 -- Build a genuine divergence: move an account across programmes so its roster
 -- row legally cannot follow.
+--
+-- Same users_cohort_programme_fk fixture need as §3 above: Aisha's own
+-- programme_id (EB1, from her reg number) would otherwise conflict with the
+-- BA2 cohort this nominates her into. Nulling it does not affect the
+-- divergence being tested — sync_roster_placement's check reads the
+-- roster row's OWN reg_number, never users.programme_id.
+update users set programme_id = null where id = pg_temp.aisha();
+
 select pg_temp.act_as(pg_temp.fhss_rep());
 select create_cohort_with_class_rep(
   pg_temp.prog('BA2'), 2025, 1, 'bimester', pg_temp.aisha(), pg_temp.fhss_rep());

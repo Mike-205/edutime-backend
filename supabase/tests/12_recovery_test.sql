@@ -8,12 +8,21 @@
 --   request_password_recovery  unauthenticated entry point, service_role only
 --
 -- People used here (all password-branch unless noted):
---   ...014 Kevin Kariuki    EB1/67358/23  claimed, provisional  — runs the
---                           full set -> fail -> succeed OTP story below.
+--   ...014 Kevin Kariuki    EB1/67358/23  runs the full set -> fail -> succeed
+--                           OTP story in §1/§2 below as himself (his real
+--                           account, auth check only — its own OAuth status
+--                           doesn't matter there). Task 1 (plan 5/5) converted
+--                           him to a real Google OAuth signup, so §3's
+--                           request_password_recovery tests build a separate,
+--                           throwaway password-branch account of their own,
+--                           filed under his same registration number, rather
+--                           than reusing id ...014 — see that section's own
+--                           comment.
 --   ...015 Aisha Hassan     EB1/67401/23  claimed, OAUTH — public.users.email
 --                           is set, so she has no password to recover.
---   ...021 Dennis Kiprono   EB1/71004/24  claimed, provisional, no recovery
---                           email on file at all — the "nothing to send" case.
+--   ...021 Dennis Kiprono   EB1/71004/24  no roster row in this seed at all —
+--                           sends nothing regardless, same as an unknown
+--                           registration number.
 --   ...054 Ian Maina        EB3/72010/26  no roster row in this seed at all —
 --                           used below by reg number only, for the "no such
 --                           registration number" case.
@@ -186,6 +195,54 @@ update user_recovery_email
 -- The single most important property: nobody signed-in-as-a-student can call
 -- this directly. It resolves an arbitrary registration number to an account
 -- on no proof at all beyond the number itself.
+--
+-- request_password_recovery (0031) resolves its target through
+-- student_roster directly (`select claimed_by from student_roster where
+-- reg_number = ...`), which is retired only in Task 7 of this plan — until
+-- then this is the still-live path. seed.sql no longer builds any roster
+-- rows at all (Task 1), and Kevin (the account this section's header comment
+-- describes as "runs the full set -> fail -> succeed OTP story") is no
+-- longer a password-branch account either: Task 1 converted him to a real
+-- Google OAuth signup (personal Gmail), so his real users.email is now set
+-- and he would fail the OAuth gate below rather than reach the recovery-email
+-- path this section actually tests.
+--
+-- So this test builds its own throwaway password-branch account rather than
+-- reusing Kevin's real id — same raw insert into auth.users pattern
+-- 13_bootstrap_test.sql and 19_signup_domain_split_test.sql use — filed under
+-- Kevin's own registration number and synthetic address, with its own
+-- verified recovery email, so the assertions below (which only ever refer to
+-- the reg number and the literal addresses, never to pg_temp.kevin()) need no
+-- further changes.
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at, confirmation_token, email_change,
+  email_change_token_new, recovery_token
+) values (
+  '00000000-0000-0000-0000-000000000000',
+  '55555555-0000-4000-8000-000000000014', 'authenticated', 'authenticated',
+  'eb1.67358.23@auth.internal', 'x', now(), now(),
+  jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email')),
+  jsonb_build_object('first_name', 'Kevin', 'last_name', 'Kariuki'),
+  now(), now(), '', '', '', ''
+);
+
+insert into student_roster (
+  reg_number, first_name, last_name, cohort_id, claimed_by, claimed_at, claim_method
+) values (
+  'EB1/67358/23', 'Kevin', 'Kariuki',
+  (select c.id from cohorts c join programmes p on p.id = c.programme_id
+    where p.code = 'EB1' and c.intake_year = 2023 and c.parent_cohort_id is null),
+  '55555555-0000-4000-8000-000000000014', now(), 'provisional'
+);
+
+-- Verified directly, bypassing the OTP flow — §1/§2 above already exercise
+-- that walkthrough in full; what this section tests is the recovery gate
+-- itself, not the setup path again.
+insert into user_recovery_email (user_id, email, verified_at)
+values ('55555555-0000-4000-8000-000000000014', 'kevin.personal@example.com', now());
+
 set local role authenticated;
 select throws_ok(
   $$ select request_password_recovery('EB1/67358/23') $$,

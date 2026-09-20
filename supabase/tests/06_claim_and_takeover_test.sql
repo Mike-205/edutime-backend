@@ -16,10 +16,13 @@
 -- that it is worthless the moment the real owner signs in with the university
 -- address that proves the identity.
 --
--- Seeded people used here (all BSC-CS 2023):
---   ...051 Lydia Chebet    no email          -> provisional only
+-- Seeded people used here (all BSC-CS 2023). Lydia and Ruth are both real
+-- Google OAuth signups since Task 1 (plan 5/5) converted every seed account —
+-- this file's own fixture below resets their email/email_verified_at to null
+-- to put them back on the "no email" footing this section relies on:
+--   ...051 Lydia Chebet    no email (reset by this file) -> provisional only
 --   ...052 Victor Onyango  eb1.67470.23@...  -> OAuth, derives EB1/67470/23
---   ...053 Ruth Nyaguthii  no email          -> provisional only
+--   ...053 Ruth Nyaguthii  no email (reset by this file) -> provisional only
 --   ...054 Ian Maina       no email, no roster row — used as a spare identity
 -- ============================================================================
 begin;
@@ -57,6 +60,54 @@ create function pg_temp.mercy()  returns uuid language sql immutable as
 create function pg_temp.no_match() returns text language sql immutable as $$
   select 'We could not match those details. Check your registration number and full name with your class rep.'
 $$;
+
+create function pg_temp.cohort(p_code text, p_intake_year int) returns uuid language sql stable as $$
+  select c.id from cohorts c join programmes p on p.id = c.programme_id
+  where p.code = p_code and c.intake_year = p_intake_year and c.parent_cohort_id is null;
+$$;
+
+
+-- ---------------------------------------------------------------------------
+-- Roster fixture
+-- ---------------------------------------------------------------------------
+-- student_roster is retired in Task 7 of this plan (AUTH_FLOW_REFACTOR.md /
+-- plan 5/5) — until then, claim_roster_row and resolve_roster_dispute still
+-- read it directly. seed.sql no longer builds any roster rows at all (Task 1
+-- moved that data onto users' new identity columns instead), so this file
+-- builds the minimal rows the functions under test need to find, keyed on
+-- the same reg numbers/names the accounts above already carry.
+--
+-- Victor, Lydia and Ruth are unclaimed — matches the "no email" comment on
+-- each of them above, and gives the squat/takeover/no-match cases something
+-- real to match against. Mercy's row is deliberately 'provisional' (not the
+-- 'oauth' her own users.claim_method now holds post-Task-1) because the
+-- "class rep is never evicted automatically" case below specifically needs
+-- an existing claim a verified OAuth claim COULD legally displace, so the
+-- test reaches the scheduling-authority check rather than "already claimed".
+insert into student_roster (
+  reg_number, first_name, last_name, middle_name, cohort_id,
+  claimed_by, claimed_at, claim_method
+) values
+  ('EB1/67470/23', 'Victor', 'Onyango',   null,     pg_temp.cohort('EB1', 2023), null, null, null),
+  ('EB1/67455/23', 'Lydia',  'Chebet',    null,     pg_temp.cohort('EB1', 2023), null, null, null),
+  ('EB1/67488/23', 'Ruth',   'Nyaguthii', null,     pg_temp.cohort('EB1', 2023), null, null, null),
+  ('EB1/67277/23', 'Mercy',  'Wanjiku',   'Njeri',  pg_temp.cohort('EB1', 2023),
+   pg_temp.mercy(), now(), 'provisional');
+
+-- Lydia and Ruth are used below as the file's "no email" password-branch
+-- squatter/claimants (see the header comment). Task 1's seed conversion made
+-- both real Google OAuth signups, so both now carry a verified
+-- users.email — Ruth's own (school) address, Lydia's own (personal) one.
+-- claim_roster_row (0019) still keys its oauth/provisional split on that
+-- exact generic pair, unconditionally on provider (0039's note: kept that
+-- way deliberately, since this still-live function reads it) — so whichever
+-- of them acts here would now either wrongly derive its OWN number instead
+-- of squatting on someone else's (Ruth), or fail the derivation check with a
+-- personal address that was never going to parse (Lydia), long before
+-- reaching the claimed/unclaimed logic this file actually tests. Reset here
+-- to recreate the "no verified email" premise both scenarios need.
+update users set email = null, email_verified_at = null
+where id in (pg_temp.lydia(), pg_temp.ruth());
 
 
 -- ---------------------------------------------------------------------------
