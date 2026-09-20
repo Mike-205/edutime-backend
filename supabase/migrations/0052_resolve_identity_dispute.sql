@@ -17,10 +17,12 @@
 -- own existing guard (cohort_id is not null -> programme must match) catches
 -- that on the retry.
 --
--- Any faculty_rep may call this, not scoped to one faculty -- same shape as
--- unclaimed_synthetic_signups' precedent (0036): a disputed account has no
--- cohort_id necessarily set to any particular faculty at this point, so
--- there is nothing to scope by.
+-- Any faculty_rep may call this, not scoped to one faculty. A disputed
+-- account's cohort_id, when set, does not necessarily belong to the
+-- resolving rep's own faculty -- the student could be sitting in any
+-- faculty's cohort. Resolving a dispute is a manual, out-of-band
+-- investigation, not an automated decision, so any faculty rep is trusted to
+-- carry it out regardless of which faculty the account currently touches.
 create or replace function resolve_identity_dispute(
   p_user_id  uuid,
   p_actor_id uuid
@@ -46,6 +48,12 @@ begin
 
   if v_target.id is null then
     raise exception 'User % not found', p_user_id;
+  end if;
+
+  if v_target.claim_method = 'oauth' then
+    raise exception
+      'User % is already oauth-verified — this function is for resolving a disputed provisional claim, not for clearing a proven identity',
+      p_user_id;
   end if;
 
   update users

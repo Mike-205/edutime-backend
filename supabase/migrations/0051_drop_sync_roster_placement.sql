@@ -71,8 +71,9 @@ begin
   returning id into v_cohort_id;
 
   update users
-  set cohort_id = v_cohort_id,
-      role = 'class_rep',
+  set cohort_id      = v_cohort_id,
+      programme_id   = p_programme_id,
+      role           = 'class_rep',
       class_rep_rank = 'primary'
   where id = p_first_rep_id;
 

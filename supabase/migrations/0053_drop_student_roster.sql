@@ -57,3 +57,20 @@ alter table identity_audit_log
   using action::text::identity_audit_action;
 
 drop type roster_audit_action;
+
+
+-- ============================================================================
+-- Corrected table comment — 0049's comment described a transitional state
+-- this migration ends. Overwrite it with one describing the table's actual
+-- final state.
+-- ============================================================================
+comment on table identity_audit_log is
+  'The entire record of every identity trust decision the system makes -- '
+  'renamed from roster_audit_log (AUTH_FLOW_REFACTOR.md §8). Denormalized: '
+  'reg_number is stored as its own plain text value, not derived by joining '
+  'elsewhere, so the trail survives whatever it is about being changed or '
+  'removed. The action enum is identity_audit_action (rebuilt here from '
+  'roster_audit_action, narrowed from 9 values to 6 -- created/updated/'
+  'removed dropped along with the roster-row-edit functions that were their '
+  'only writers). This retirement is complete: no old-system function or '
+  'the student_roster table it operated on survives past this migration.';

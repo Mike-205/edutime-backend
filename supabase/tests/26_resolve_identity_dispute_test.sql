@@ -12,7 +12,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(12);
+select plan(13);
 
 
 -- ---------------------------------------------------------------------------
@@ -154,6 +154,17 @@ select throws_ok(
   'P0001',
   'Only a faculty_rep may resolve an identity dispute',
   'a non-faculty-rep cannot resolve a dispute'
+);
+
+-- §1's account (…0001) reached claim_method = 'oauth' by the end of its
+-- sequence -- reused here rather than building a dedicated fixture.
+select pg_temp.act_as(pg_temp.fst_rep());
+select throws_ok(
+  format($$ select resolve_identity_dispute(%L::uuid, %L::uuid) $$,
+         'aaaaaaaa-1111-4000-8000-000000000001', pg_temp.fst_rep()),
+  'P0001',
+  'User aaaaaaaa-1111-4000-8000-000000000001 is already oauth-verified — this function is for resolving a disputed provisional claim, not for clearing a proven identity',
+  'a faculty rep cannot resolve a dispute on an already oauth-verified account'
 );
 
 select * from finish();

@@ -15,7 +15,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(20);
+select plan(21);
 
 
 -- ---------------------------------------------------------------------------
@@ -189,10 +189,12 @@ select throws_ok(
 -- The nominee (Ian, …054) carries a real EB3 programme_id since seed's §9.5
 -- (plan 5/5, task 1) now derives it from his reg_number even though he has no
 -- cohort yet. This test nominates him into an EB1 cohort instead — a
--- deliberate cross-programme promotion for the "atomic first-rep promotion"
--- assertion below — so his own fixture clears that programme_id first,
--- rather than relying on seed leaving it unset.
-update users set programme_id = null where id = pg_temp.nominee();
+-- deliberate cross-programme promotion (0016), still allowed as long as the
+-- rep's own faculty matches the new cohort's faculty. Ian keeps his real EB3
+-- programme_id going in, so this exercises create_cohort_with_class_rep's
+-- fix for the FK bug found in final review: promoting a rep must also update
+-- their programme_id to match their new cohort's programme_id, not just
+-- their cohort_id.
 select pg_temp.act_as(pg_temp.fst_rep());
 select lives_ok(
   format($$ select create_cohort_with_class_rep(%L::uuid, 2026, 1, 'bimester', %L::uuid, %L::uuid) $$,
@@ -205,6 +207,12 @@ select is(
   (select role::text || '/' || class_rep_rank::text from users where id = pg_temp.nominee()),
   'class_rep/primary',
   'the nominated student is promoted to primary class rep atomically'
+);
+
+select is(
+  (select programme_id from users where id = pg_temp.nominee()),
+  (select id from programmes where code = 'EB1'),
+  'the cross-programme promotion updates the rep''s programme_id to match their new cohort'
 );
 
 -- The first rep must be an actual student: a non-existent id used to leave the
