@@ -97,7 +97,7 @@ select ok(
   '...personal_email_verified_at is stamped'
 );
 select is(
-  (select action::text from roster_audit_log
+  (select action::text from identity_audit_log
    where target_user = '99999999-0000-4000-8000-000000000001' and actor_id = '99999999-0000-4000-8000-000000000001'
    order by created_at desc limit 1),
   'identity_linked',
@@ -127,7 +127,7 @@ select is(
 -- and "order by created_at desc" cannot distinguish them. Identify this
 -- call's row by its own snapshot content instead.
 select is(
-  (select (snapshot ->> 'previous_personal_email') from roster_audit_log
+  (select (snapshot ->> 'previous_personal_email') from identity_audit_log
    where target_user = '99999999-0000-4000-8000-000000000001' and actor_id = '99999999-0000-4000-8000-000000000001'
      and snapshot ->> 'new_personal_email' = 'second.recovery@gmail.com'),
   'first.recovery@gmail.com',

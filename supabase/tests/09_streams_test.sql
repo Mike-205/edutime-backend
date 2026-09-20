@@ -466,14 +466,14 @@ select is(
 
 select is(
   (select row(snapshot->>'stream', (snapshot->>'was_claimed')::boolean)
-     from roster_audit_log
+     from identity_audit_log
     where reg_number = 'EB1/67358/23' and action = 'reassigned'),
   row('A'::text, true),
   'every move writes a ''reassigned'' audit row — 0.5''s rule for re-pointing claimed identities'
 );
 
 select is(
-  (select (snapshot->>'from_cohort_id')::uuid from roster_audit_log
+  (select (snapshot->>'from_cohort_id')::uuid from identity_audit_log
     where reg_number = 'EB1/67455/23' and action = 'reassigned'),
   pg_temp.cohort('EB1', 2023),
   '...recording where they came from, not just where they went'

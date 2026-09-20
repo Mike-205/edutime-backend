@@ -202,7 +202,7 @@ select is(
 );
 
 select is(
-  (select count(*)::int from roster_audit_log
+  (select count(*)::int from identity_audit_log
     where reg_number = 'EB1/67470/23' and action = 'takeover'), 1,
   'the takeover is on the audit trail'
 );
@@ -369,7 +369,7 @@ select ok(
 );
 
 select is(
-  (select count(*)::int from roster_audit_log
+  (select count(*)::int from identity_audit_log
     where reg_number = 'EB1/67470/23' and action = 'dispute_resolved'), 1,
   '...with an audit row, because an unlogged manual override would be the most '
   'dangerous function in this schema'

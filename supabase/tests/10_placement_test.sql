@@ -109,7 +109,7 @@ select is(
 );
 
 select is(
-  (select snapshot->>'reason' from roster_audit_log
+  (select snapshot->>'reason' from identity_audit_log
     where reg_number = 'EB1/67358/23' and action = 'reassigned'),
   'cohort_created',
   '...and the move is on the audit trail, per 0.5''s rule for re-pointing claimed identities'
@@ -141,7 +141,7 @@ select is(
 );
 
 select is(
-  (select snapshot->>'reason' from roster_audit_log
+  (select snapshot->>'reason' from identity_audit_log
     where reg_number = 'EB1/67401/23' and action = 'reassigned'),
   'join_request_approved',
   '...with the reason recorded, so the two placement paths are distinguishable'
