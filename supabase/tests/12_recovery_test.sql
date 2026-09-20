@@ -18,8 +18,12 @@
 --                           filed under his same registration number, rather
 --                           than reusing id ...014 — see that section's own
 --                           comment.
---   ...015 Aisha Hassan     EB1/67401/23  claimed, OAUTH — public.users.email
---                           is set, so she has no password to recover.
+--   ...015 Aisha Hassan     EB1/67401/23  no roster row in this seed at all —
+--                           sends nothing regardless, same as an unknown
+--                           registration number (she is also OAuth-linked —
+--                           public.users.email is set — but the roster
+--                           lookup returns nothing before that gate is ever
+--                           reached).
 --   ...021 Dennis Kiprono   EB1/71004/24  no roster row in this seed at all —
 --                           sends nothing regardless, same as an unknown
 --                           registration number.
@@ -182,8 +186,13 @@ select is(
   'an expired code is refused identically to a wrong one'
 );
 
--- Force it verified for the OAuth-gate test in §3 below — bypassing the OTP
--- flow deliberately, since what §3 tests is the gate, not this path again.
+-- Originally set up so §3 below could exercise the OAuth gate against a
+-- verified recovery record. Task 1 (plan 5/5) removed Aisha's student_roster
+-- row, so §3's assertion on her now returns false at the earlier
+-- roster-lookup branch instead (see that section) — this update is inert
+-- for what's currently tested. Left in place rather than removed: it's a
+-- SQL-behavior change out of scope for a documentation fix, and this whole
+-- file is retired in Task 2 of the same plan.
 update user_recovery_email
   set verified_at = now(), otp_code = null, otp_expires_at = null
   where user_id = pg_temp.aisha();
@@ -265,14 +274,17 @@ select is(
   (select should_send from jsonb_to_record(request_password_recovery('EB1/71004/24'))
      as x(should_send boolean)),
   false,
-  'a claimed account with no recovery email on file sends nothing'
+  'a registration number with no roster row sends nothing, the same '
+  'early-return as an unknown registration number'
 );
 
 select is(
   (select should_send from jsonb_to_record(request_password_recovery('EB1/67401/23'))
      as x(should_send boolean)),
   false,
-  'an OAuth-linked account has no password to recover'
+  'a registration number with no roster row sends nothing, the same '
+  'early-return as an unknown registration number (this account is also '
+  'OAuth-linked, but the roster lookup never reaches that gate)'
 );
 
 select is(
