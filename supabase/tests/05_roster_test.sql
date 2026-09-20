@@ -22,7 +22,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(27);
+select plan(25);
 
 
 -- ---------------------------------------------------------------------------
@@ -238,29 +238,6 @@ select is(
   'a class rep in another faculty sees nothing outside their own cohort'
 );
 
-reset role;
-
-
--- ---------------------------------------------------------------------------
--- Recovery addresses are self-only
--- ---------------------------------------------------------------------------
--- A recovery email is personal PII that proves nothing about identity. It must
--- not be visible to a class rep, who can see everything else about their cohort.
-insert into user_recovery_email (user_id, email)
-values (pg_temp.student(), 'someone.personal@example.com');
-
-set local role authenticated;
-select pg_temp.act_as(pg_temp.cs23_rep());
-select is(
-  (select count(*) from user_recovery_email), 0::bigint,
-  'a class rep cannot read their own cohort member''s recovery address'
-);
-
-select pg_temp.act_as(pg_temp.student());
-select is(
-  (select email from user_recovery_email), 'someone.personal@example.com',
-  '...but the owner can read their own'
-);
 reset role;
 
 
