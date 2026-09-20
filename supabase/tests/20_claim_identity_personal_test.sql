@@ -279,6 +279,14 @@ select is(
 -- approved exactly as before this migration, regardless of target cohort.
 -- Same seeded plain-student fixture 02_trust_chain_test.sql uses, approved
 -- by the actual rep of the (mismatched) target cohort.
+--
+-- old_style_student()'s programme_id is no longer null by the time seed
+-- finishes (plan 5/5 task 1's §9.5 now derives it from every reg-numbered
+-- account, this one included) — null it here, in this test's own fixture,
+-- to recreate the "never gone through Flow 1/2" premise the regression
+-- actually needs.
+update users set programme_id = null where id = pg_temp.old_style_student();
+
 insert into cohort_join_requests (student_id, cohort_id)
 values (pg_temp.old_style_student(), pg_temp.cohort('EB3', 2023));
 

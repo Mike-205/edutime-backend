@@ -14,10 +14,15 @@
 -- People used here:
 --   ...001 Peter Kimani    already faculty_rep (FST) — idempotency + re-point
 --   ...011 Mercy Wanjiku   class_rep — the non-student refusal
---   ...053 Ruth Nyaguthii  plain student, null email, SYNTHETIC auth address —
---                          given a real one below, for the email-copy path
---   ...054 Ian Maina       plain student, null email, synthetic auth address,
---                          left synthetic — proves it is NOT copied
+--   Ruth Nyaguthii  plain student, null email, SYNTHETIC auth address — given
+--                   a real one below, for the email-copy path. A fixture this
+--                   file builds itself (below), not seed's ...053: plan 5/5
+--                   task 1 converted every seed account to a Google OAuth
+--                   signup, so seed no longer has a synthetic-address student
+--                   to borrow for this scenario.
+--   Ian Maina       plain student, null email, synthetic auth address, left
+--                   synthetic — proves it is NOT copied. Also a fixture this
+--                   file builds itself, for the same reason.
 -- ============================================================================
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -40,12 +45,40 @@ create function pg_temp.fst_rep() returns uuid language sql immutable as
   $$ select '22222222-0000-4000-8000-000000000001'::uuid $$;
 create function pg_temp.mercy()   returns uuid language sql immutable as
   $$ select '22222222-0000-4000-8000-000000000011'::uuid $$;
+
+-- Ruth and Ian, built directly rather than borrowed from seed: this section
+-- needs a student who arrived through the still-live password/synthetic path
+-- (0002's sync trigger, exercised directly here the same way
+-- 19_signup_domain_split_test.sql does), and seed no longer has one — plan
+-- 5/5 task 1 converted every seed account (including the ...053/...054 ids
+-- these two used to be) to a Google OAuth signup.
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at, confirmation_token, email_change,
+  email_change_token_new, recovery_token
+) values (
+  '00000000-0000-0000-0000-000000000000',
+  '55555555-0000-4000-8000-000000000053', 'authenticated', 'authenticated',
+  'ruth.onboarding@auth.internal', 'x', now(), now(),
+  jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email')),
+  jsonb_build_object('first_name', 'Ruth', 'last_name', 'Nyaguthii'),
+  now(), now(), '', '', '', ''
+), (
+  '00000000-0000-0000-0000-000000000000',
+  '55555555-0000-4000-8000-000000000054', 'authenticated', 'authenticated',
+  'ian.onboarding@auth.internal', 'x', now(), now(),
+  jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email')),
+  jsonb_build_object('first_name', 'Ian', 'last_name', 'Maina'),
+  now(), now(), '', '', '', ''
+);
+
 create function pg_temp.ruth()    returns uuid language sql immutable as
-  $$ select '22222222-0000-4000-8000-000000000053'::uuid $$;
+  $$ select '55555555-0000-4000-8000-000000000053'::uuid $$;
 create function pg_temp.ian()     returns uuid language sql immutable as
-  $$ select '22222222-0000-4000-8000-000000000054'::uuid $$;
--- Plain student, but unlike the others she has a reg_number, a cohort AND an
--- oauth roster claim — the three things a promotion must not clobber.
+  $$ select '55555555-0000-4000-8000-000000000054'::uuid $$;
+-- Plain student, but unlike the others she has a student_number, a cohort AND
+-- an oauth identity claim — the three things a promotion must not clobber.
 create function pg_temp.faith()   returns uuid language sql immutable as
   $$ select '22222222-0000-4000-8000-000000000013'::uuid $$;
 
@@ -163,9 +196,9 @@ select lives_ok(
 );
 
 select is(
-  (select reg_number from users where id = pg_temp.faith()),
-  'EB1/67340/23',
-  '...and KEEPS their registration number — they are still a student'
+  (select student_number from users where id = pg_temp.faith()),
+  '67340',
+  '...and KEEPS their student number — they are still a student'
 );
 
 select ok(
@@ -174,9 +207,9 @@ select ok(
 );
 
 select is(
-  (select claim_method::text from student_roster where claimed_by = pg_temp.faith()),
+  (select claim_method::text from users where id = pg_temp.faith()),
   'oauth',
-  '...and their roster claim survives untouched'
+  '...and their identity claim survives untouched'
 );
 
 select is(

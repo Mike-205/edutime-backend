@@ -185,6 +185,14 @@ select throws_ok(
 );
 
 -- Within their own faculty, the same call works.
+--
+-- The nominee (Ian, …054) carries a real EB3 programme_id since seed's §9.5
+-- (plan 5/5, task 1) now derives it from his reg_number even though he has no
+-- cohort yet. This test nominates him into an EB1 cohort instead — a
+-- deliberate cross-programme promotion for the "atomic first-rep promotion"
+-- assertion below — so his own fixture clears that programme_id first,
+-- rather than relying on seed leaving it unset.
+update users set programme_id = null where id = pg_temp.nominee();
 select pg_temp.act_as(pg_temp.fst_rep());
 select lives_ok(
   format($$ select create_cohort_with_class_rep(%L::uuid, 2026, 1, 'bimester', %L::uuid, %L::uuid) $$,
