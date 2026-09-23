@@ -1,3 +1,8 @@
+> **Archived 2026-09-23.** Point-in-time snapshot, kept for historical context only.
+> For current state, see `docs/STATUS.md` and `docs/AUTH_FLOW.md`. Section numbers
+> below are still cited by number from historical migration comments — don't
+> renumber, this file is frozen.
+
 # Technical Discovery — Lecture Scheduler Backend
 
 *Read this to understand what exists and why, without needing to trace through 16 migration files. Written for a backend dev picking this up cold.*
