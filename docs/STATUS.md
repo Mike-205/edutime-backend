@@ -61,6 +61,14 @@ Full historical detail (stale past migration `0036`, kept for context) is in
   in-app request/escalation flow.
 - **Flutter client hasn't been started.** `docs/AUTH_FLOW.md` is the spec to build it
   against.
+- **No load, capacity, or concurrency testing exists yet.** pgTAP covers correctness
+  in isolation only. Design is written up in
+  `docs/superpowers/specs/2026-09-23-load-capacity-and-concurrency-testing-design.md`
+  — capacity model grounded in real Chuka University enrollment numbers, a harness
+  plan (k6 + Deno/supabase-js), a known bottleneck already found by reading the code
+  (`dispatch-push` has a fixed 3,000 notifications/hour ceiling, unquantified against
+  realistic burst scenarios), and concurrency-race scenarios for venue booking,
+  cohort-join approval, and identity linking. Baseline hasn't been run yet.
 
 ## Explicitly out of scope (not oversights)
 
