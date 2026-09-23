@@ -1,3 +1,6 @@
+> **Archived 2026-09-23.** Point-in-time snapshot, kept for historical context only.
+> For current state, see `docs/STATUS.md` and `docs/AUTH_FLOW.md`.
+
 # Auth flow refactor — redesign, partially implemented
 
 > **Status as of migration `0043` (2026-09-06): §0-4 and §7 are BUILT** — schema
