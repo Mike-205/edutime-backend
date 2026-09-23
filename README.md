@@ -9,7 +9,8 @@ statement and target users.
 ## Stack
 
 - **Database/Backend:** [Supabase](https://supabase.com) — Postgres 17, Auth
-  (Google/Apple OAuth), Row-Level Security, Realtime, Edge Functions (Deno/TypeScript)
+  (Google OAuth; Apple is configured in code but disabled), Row-Level Security,
+  Realtime, Edge Functions (Deno/TypeScript)
 - **Client:** Flutter — separate repo, not started yet. `docs/AUTH_FLOW.md` is the
   spec it needs to be built against.
 
@@ -52,9 +53,10 @@ supabase test db       # runs the full pgTAP suite
 
 53 migrations, 22 pgTAP test files, all passing as of the last full-suite run
 (2026-09-23). The original roster/password auth system has been fully retired in
-favor of OAuth-only signup (Google for university emails, human-verified class-rep
-vouching for the rest). See [docs/STATUS.md](docs/STATUS.md) for what's shipped and
-what's next.
+favor of OAuth-only signup: everyone authenticates with Google OAuth, but university
+emails auto-derive their student identity while personal emails need a class rep to
+vouch for them at cohort-join time. See [docs/STATUS.md](docs/STATUS.md) for what's
+shipped and what's next.
 
 ## Contributing
 
