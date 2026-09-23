@@ -11,10 +11,14 @@ locally to confirm current numbers before relying on them for anything load-bear
 The original roster/password authentication system has been fully retired. Signup is
 OAuth-only now:
 
-- **University-email signup** (Google OAuth) — the primary path, auto-verified via
-  email domain.
-- **Personal-email signup** — requires human verification: a class rep vouches for the
-  student at cohort-join time.
+- **University-email signup** (Google OAuth against `@student.chuka.ac.ke`) — the
+  primary path; student identity (reg number, programme, cohort) is derived directly
+  from the proven school email, no human step needed.
+- **Personal-email signup** (Google OAuth against any other address) — requires human
+  verification: a class rep vouches for the student and approves their cohort-join
+  request. Can later be upgraded/displaced by a genuine school-email OAuth claim; the
+  reverse never happens. Both signup paths use the same Google OAuth provider — they
+  differ in verification method, not authentication mechanism.
 - Email/password signup is disabled at the Supabase Auth config layer
   (`supabase/config.toml`).
 
@@ -25,7 +29,12 @@ redesign (archived — the redesign it proposed is fully shipped).
 ## Shipped, by phase
 
 - **Phase 0-2** — core schema, event/lecture API, data integrity and retention rules.
-- **Phase S** — cohort streams (splitting a cohort that already shares a pace).
+- **Phase R** — Google OAuth configured, plus the original roster-based signup/claim
+  system (later fully retired by the Plan 5 auth redesign below).
+- **Phase S** — cohort streams: a large intake too big for one room splits into
+  parallel lecture groups (Stream A, Stream B, ...) for the whole timetable, each
+  electing its own class rep, with streams still able to rejoin for combined
+  sessions.
 - **Phase 3** — infrastructure: superadmin bootstrap, push delivery (Edge Functions),
   confirmation nudges.
 - **Auth redesign, Plans 1-5** — replaced roster/password auth with OAuth-only
@@ -69,8 +78,9 @@ Flagged by the Plan 5 final review as real but non-blocking:
 - `supabase/.env.example`'s `AXENE_*` section is stale for the same reason.
 - A handful of test-file comments still describe roster functions that no longer
   exist.
-- Some index names still reference the pre-rename `roster_audit_log` table (now
-  `identity_audit_log`).
+- One index, `roster_audit_reg_idx`, still carries the pre-rename `roster_audit_log`
+  name even though the table is now `identity_audit_log` (its sibling
+  `roster_audit_roster_idx` was dropped implicitly along with `roster_id` in `0049`).
 
 None of these affect correctness — they're readability/hygiene debt for whoever
 picks them up next.
