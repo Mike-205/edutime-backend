@@ -1,3 +1,6 @@
+> **Archived 2026-09-23.** Point-in-time snapshot, kept for historical context only.
+> For current state, see `docs/STATUS.md` and `docs/AUTH_FLOW.md`.
+
 # Phase 1 handoff — what `0022` has to do
 
 Written 2026-08-01, mid-Phase-1, so this can be picked up cold.

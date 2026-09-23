@@ -1,13 +1,15 @@
 # Auth Flow — client contract and user journeys
 
-*`AUTH_FLOW_REFACTOR.md` is the design doc that drove this rewrite — it explains
-**why** the design is what it is, in prose that is deliberately not verbatim against the
-live code. This file is **what the client must do, in order**: the exact call sequence,
-the exact strings, the exact thing a user sees when something goes wrong. Function
-names, parameter names, and error text below are taken directly from the live migration
-files, not paraphrased. (`TECHNICAL_DISCOVERY.md` §10 still describes the old
-roster/password design as current — it has not been updated for this rewrite yet, so
-treat it as stale, not as a second source of rationale, until it is.)*
+*`docs/history/AUTH_FLOW_REFACTOR.md` is the design doc that drove this rewrite — it
+explains **why** the design is what it is, in prose that is deliberately not verbatim
+against the live code. It's archived now that the redesign it proposed has fully
+shipped, kept for rationale only. This file is **what the client must do, in order**:
+the exact call sequence, the exact strings, the exact thing a user sees when something
+goes wrong. Function names, parameter names, and error text below are taken directly
+from the live migration files, not paraphrased. (`docs/history/TECHNICAL_DISCOVERY.md`
+§10 still describes the old roster/password design — it was never updated for this
+rewrite and is now archived as a permanent historical snapshot, not a second source of
+rationale.)*
 
 State as of `0053` (2026-09-20). No Flutter client exists yet — Part 1 is the spec it
 needs to be built against; Part 2 describes what the mechanics in Part 1 imply the UI

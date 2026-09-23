@@ -1,3 +1,6 @@
+> **Archived 2026-09-23.** Point-in-time snapshot, kept for historical context only.
+> For current state, see `docs/STATUS.md` and `docs/AUTH_FLOW.md`.
+
 # Phase 2 handoff — data integrity and retention
 
 Written 2026-08-20, at the start of Phase 2, so this can be picked up cold.
