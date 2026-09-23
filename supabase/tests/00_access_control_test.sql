@@ -224,18 +224,13 @@ select is(
        'leave_event_cohort', 'reschedule_event', 'get_venue_occupancy',
        'is_venue_available', 'create_cohort_with_class_rep', 'demote_class_rep',
        'approve_cohort_join_request', 'decline_cohort_join_request',
-       -- Phase R. mark_email_verified used to be on this list and was dropped
-       -- by 0019 rather than hardened — after the roster there is no client
-       -- assertion left for it to validate.
-       'claim_roster_row', 'resolve_roster_dispute', 'roster_add_student',
-       'roster_bulk_import', 'roster_correct_student', 'roster_remove_student',
-       'roster_assert_may_write', 'parse_reg_number', 'normalize_reg_number',
-       'reg_number_from_email',
+       'parse_reg_number', 'normalize_reg_number', 'reg_number_from_email',
        -- Phase 1 (0022). Every one of these mutates a schedule or a role, so
        -- every one of them must be closed to anon the moment it is created —
        -- CREATE FUNCTION grants EXECUTE to PUBLIC, so the revoke is not optional.
        'cancel_recurrence_group', 'update_event',
-       'confirm_attendance', 'unconfirm_attendance', 'promote_class_rep'
+       'confirm_attendance', 'unconfirm_attendance', 'promote_class_rep',
+       'resolve_identity_dispute'
      )
      and has_function_privilege('anon', p.oid, 'execute')),
   0,

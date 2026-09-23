@@ -104,7 +104,7 @@ select ok(
   '...school_email_verified_at is stamped'
 );
 select is(
-  (select action::text from roster_audit_log
+  (select action::text from identity_audit_log
    where target_user = '88888888-0000-4000-8000-000000000001' and actor_id = '88888888-0000-4000-8000-000000000001'
    order by created_at desc limit 1),
   'identity_linked',
@@ -198,7 +198,7 @@ select is(
   '...the squatter is evicted: student_number reset to null'
 );
 select is(
-  (select action::text from roster_audit_log
+  (select action::text from identity_audit_log
    where target_user = '88888888-0000-4000-8000-000000000003' and action = 'takeover'
    order by created_at desc limit 1),
   'takeover',

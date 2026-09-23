@@ -13,9 +13,13 @@ set local search_path = public, extensions;
 
 select plan(1);
 
+-- roster_audit_action was renamed to identity_audit_action and narrowed by
+-- 0053 (Plan 5, Task 7) once its old-system-only values ('created',
+-- 'updated', 'removed') had no live writer left. identity_linked survives
+-- that rebuild, so this assertion still holds against the new type name.
 select ok(
-  'identity_linked' = any(enum_range(null::roster_audit_action)::text[]),
-  'roster_audit_action gained identity_linked'
+  'identity_linked' = any(enum_range(null::identity_audit_action)::text[]),
+  'identity_audit_action retains identity_linked'
 );
 
 select * from finish();

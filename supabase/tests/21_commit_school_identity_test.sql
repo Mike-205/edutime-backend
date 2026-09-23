@@ -104,7 +104,7 @@ select is(
 -- derives (EB1/98001/26), NOT the bare student_number (98001) — matching
 -- every other writer of this column across the codebase.
 select isnt_empty(
-  $$ select 1 from roster_audit_log
+  $$ select 1 from identity_audit_log
      where reg_number = 'EB1/98001/26' and action = 'claimed'
        and target_user = '66666666-0000-4000-8000-000000000001' $$,
   'a claimed audit row is recorded, with the full-form reg_number'
@@ -192,6 +192,13 @@ select is(
 -- with a proven-but-unclaimed school email must NOT be swept into this
 -- branch.
 -- ---------------------------------------------------------------------------
+-- already_placed_school_account()'s programme_id is no longer null by the
+-- time seed finishes (plan 5/5 task 1's §9.5 now derives it from every
+-- reg-numbered account, this one included) — null it here, in this test's
+-- own fixture, to recreate the "proven-but-unclaimed" premise the
+-- discriminator check actually needs.
+update users set programme_id = null where id = pg_temp.already_placed_school_account();
+
 insert into cohort_join_requests (student_id, cohort_id)
 values (pg_temp.already_placed_school_account(), pg_temp.cohort('EB3', 2023));
 

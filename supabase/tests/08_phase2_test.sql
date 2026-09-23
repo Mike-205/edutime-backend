@@ -18,7 +18,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(32);
+select plan(33);
 
 
 -- ---------------------------------------------------------------------------
@@ -55,11 +55,18 @@ create function pg_temp.kevin()   returns uuid language sql immutable as   -- pl
 -- §1 Unique constraints (TODO §2.1)
 -- ============================================================================
 
--- users.reg_number mirrors student_roster.reg_number, and 0019's invariant is
--- that the two agree. Nothing stopped them diverging until now.
+-- users.reg_number is a plain UNIQUE column, tolerant of any number of NULLs
+-- (every account here has a null reg_number after seed's Flow 1/2 conversion
+-- — that is the correct resting state for an account that never claimed
+-- a roster row, back when there was a roster to claim). Set up two accounts
+-- holding the SAME non-null value first, so there is something for a third
+-- write to collide with.
+select lives_ok(
+  $$ update users set reg_number = 'EB1/99999/23' where id = '22222222-0000-4000-8000-000000000012' $$,
+  'a plain UPDATE can set reg_number on an account for this test''s own setup'
+);
 select throws_ok(
-  $$ update users set reg_number = 'EB1/67312/23'
-     where id = '22222222-0000-4000-8000-000000000014' $$,
+  $$ update users set reg_number = 'EB1/99999/23' where id = '22222222-0000-4000-8000-000000000014' $$,
   '23505',
   null,
   'two accounts cannot hold the same registration number'

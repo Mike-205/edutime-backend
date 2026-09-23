@@ -138,13 +138,13 @@ select isnt_empty(
 -- 0029). commit_school_identity computes this exact string as v_reg before
 -- ever calling parse_reg_number; it must be reused here, not discarded.
 select isnt_empty(
-  $$ select 1 from roster_audit_log
+  $$ select 1 from identity_audit_log
      where reg_number = 'EB1/98101/26' and action = 'takeover'
        and target_user = '77777777-0000-4000-8000-000000000001' $$,
   'a takeover audit row is recorded against the squatter, with the full-form reg_number'
 );
 select isnt_empty(
-  $$ select 1 from roster_audit_log
+  $$ select 1 from identity_audit_log
      where reg_number = 'EB1/98101/26' and action = 'claimed'
        and target_user = '77777777-0000-4000-8000-000000000002' $$,
   'a claimed audit row is recorded against the real owner, with the full-form reg_number'

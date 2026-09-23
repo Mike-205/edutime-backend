@@ -565,58 +565,68 @@ begin
   perform seed_user('22222222-0000-4000-8000-000000000002', 'ba2.70001.24@student.chuka.ac.ke',
                     'Salome', 'Achieng', null,     'BA2/70001/24', 'google');
 
-  -- Students. Path A (provider 'email') keeps public.users.email NULL and stays
-  -- unverified; Path B (provider 'google') is verified at signup. Both are
-  -- represented so the verification badge has something to distinguish.
-  -- Path B login addresses are the reg number with slashes as dots, per §10.
+  -- Students. Every account is a Google OAuth signup now, split across the two
+  -- email tiers: a school-address login (Flow 2) or a personal-address login
+  -- (Flow 1). Login addresses for the school tier are the reg number with
+  -- slashes as dots, per §10.
 
   -- EB1 intake 2023 — the cohort most of the seeded timetable belongs to.
-  perform seed_user('22222222-0000-4000-8000-000000000011', 'eb1.67277.23@auth.internal',
-                    'Mercy',   'Wanjiku',  'Njeri',  'EB1/67277/23', 'email');
+  -- Mercy Wanjiku Njeri -- Flow 2 (school email)
+  perform seed_user('22222222-0000-4000-8000-000000000011', 'eb1.67277.23@student.chuka.ac.ke',
+                    'Mercy',   'Wanjiku',  'Njeri',  'EB1/67277/23', 'google');
   perform seed_user('22222222-0000-4000-8000-000000000012', 'eb1.67312.23@student.chuka.ac.ke',
                     'Brian',   'Otieno',   null,     'EB1/67312/23', 'google');
   perform seed_user('22222222-0000-4000-8000-000000000013', 'eb1.67340.23@student.chuka.ac.ke',
                     'Faith',   'Mueni',    null,     'EB1/67340/23', 'google');
-  perform seed_user('22222222-0000-4000-8000-000000000014', 'eb1.67358.23@auth.internal',
-                    'Kevin',   'Kariuki',  'Mwangi', 'EB1/67358/23', 'email');
+  -- Kevin Kariuki Mwangi -- Flow 1 (personal email)
+  perform seed_user('22222222-0000-4000-8000-000000000014', 'kevin.kariuki23@gmail.com',
+                    'Kevin',   'Kariuki',  'Mwangi', 'EB1/67358/23', 'google');
   perform seed_user('22222222-0000-4000-8000-000000000015', 'eb1.67401.23@student.chuka.ac.ke',
                     'Aisha',   'Hassan',   null,     'EB1/67401/23', 'google');
 
   -- EB1 intake 2024 running the trimester pace — self-sponsored students moving
   -- faster, which is why a 2024 intake is already at semester 5 alongside the
   -- 2023 bimester cohort. This is the pace mechanic from §4 in the data.
-  perform seed_user('22222222-0000-4000-8000-000000000021', 'eb1.71004.24@auth.internal',
-                    'Dennis',  'Kiprono',  null,     'EB1/71004/24', 'email');
+  -- Dennis Kiprono -- Flow 2 (school email)
+  perform seed_user('22222222-0000-4000-8000-000000000021', 'eb1.71004.24@student.chuka.ac.ke',
+                    'Dennis',  'Kiprono',  null,     'EB1/71004/24', 'google');
   perform seed_user('22222222-0000-4000-8000-000000000022', 'eb1.71066.24@student.chuka.ac.ke',
                     'Grace',   'Achieng',  'Awuor',  'EB1/71066/24', 'google');
 
   -- EB3 Applied Computer Science, intake 2023.
   perform seed_user('22222222-0000-4000-8000-000000000031', 'eb3.67891.23@student.chuka.ac.ke',
                     'Samuel',  'Mutuku',   null,     'EB3/67891/23', 'google');
-  perform seed_user('22222222-0000-4000-8000-000000000032', 'eb3.67903.23@auth.internal',
-                    'Cynthia', 'Nyambura', null,     'EB3/67903/23', 'email');
+  -- Cynthia Nyambura -- Flow 1 (personal email)
+  perform seed_user('22222222-0000-4000-8000-000000000032', 'cynthia.nyambura23@gmail.com',
+                    'Cynthia', 'Nyambura', null,     'EB3/67903/23', 'google');
 
   -- BA2 Criminology & Security Studies, intake 2024 — the FHSS cohort. Exists so
   -- 0014's faculty scoping has a cross-faculty case to be tested against.
-  perform seed_user('22222222-0000-4000-8000-000000000041', 'ba2.70115.24@auth.internal',
-                    'Abdul',   'Rashid',   'Omar',   'BA2/70115/24', 'email');
+  -- Abdul Rashid Omar -- Flow 2 (school email)
+  perform seed_user('22222222-0000-4000-8000-000000000041', 'ba2.70115.24@student.chuka.ac.ke',
+                    'Abdul',   'Rashid',   'Omar',   'BA2/70115/24', 'google');
   perform seed_user('22222222-0000-4000-8000-000000000042', 'ba2.70233.24@student.chuka.ac.ke',
                     'Naomi',   'Chepkoech',null,     'BA2/70233/24', 'google');
   perform seed_user('22222222-0000-4000-8000-000000000043', 'ba2.70290.24@student.chuka.ac.ke',
                     'Joseph',  'Barasa',   null,     'BA2/70290/24', 'google');
 
   -- Cohortless students, for the join-request flow in §10.
-  perform seed_user('22222222-0000-4000-8000-000000000051', 'eb1.67455.23@auth.internal',
-                    'Lydia',   'Chebet',   null,     'EB1/67455/23', 'email');
+  -- Lydia Chebet -- Flow 1 (personal email)
+  perform seed_user('22222222-0000-4000-8000-000000000051', 'lydia.chebet23@gmail.com',
+                    'Lydia',   'Chebet',   null,     'EB1/67455/23', 'google');
   perform seed_user('22222222-0000-4000-8000-000000000052', 'eb1.67470.23@student.chuka.ac.ke',
                     'Victor',  'Onyango',  null,     'EB1/67470/23', 'google');
-  perform seed_user('22222222-0000-4000-8000-000000000053', 'eb1.67488.23@auth.internal',
-                    'Ruth',    'Nyaguthii',null,     'EB1/67488/23', 'email');
-  -- A first-year with no university email yet — the exact case the reg-number
-  -- signup path exists for (§10, and the DISCOVERY constraint about incoming
-  -- first-years).
-  perform seed_user('22222222-0000-4000-8000-000000000054', 'eb3.72010.26@auth.internal',
-                    'Ian',     'Maina',    null,     'EB3/72010/26', 'email');
+  -- Ruth Nyaguthii -- Flow 2 (school email), cohortless -- exercises the
+  -- Flow 2 join-request discriminator (approve_cohort_join_request's
+  -- three-clause check, 0041) against real seed data.
+  perform seed_user('22222222-0000-4000-8000-000000000053', 'eb1.67488.23@student.chuka.ac.ke',
+                    'Ruth',    'Nyaguthii',null,     'EB1/67488/23', 'google');
+  -- Ian Maina -- Flow 1 (personal email), cohortless -- "a first-year with
+  -- no university email yet" is still the exact case this account
+  -- represents; it just gets there via a personal Google signup now
+  -- instead of the retired password path.
+  perform seed_user('22222222-0000-4000-8000-000000000054', 'ian.maina26@gmail.com',
+                    'Ian',     'Maina',    null,     'EB3/72010/26', 'google');
 end $$;
 
 -- Promotion sets `role` and `faculty_id` and NOTHING else — exactly what
@@ -742,89 +752,50 @@ end $$;
 
 
 -- ----------------------------------------------------------------------------
--- 9.5 The roster
+-- 9.5 Identity facts, derived from the registration numbers above
 -- ----------------------------------------------------------------------------
--- Built from the accounts above rather than typed out again, so the two can
--- never disagree. This has to run after §9: a roster row pins a cohort, and the
--- cohorts did not exist until then.
+-- student_roster is retired (Plan 5, Task 7) — this used to build claimed and
+-- unclaimed roster rows from the accounts above. Its replacement writes the
+-- same information onto the columns the new system actually reads:
+-- claim_method, programme_id, self_sponsored, student_number, admission_year.
+-- Direct UPDATE as postgres, same Superadmin-path reasoning seed_user's own
+-- comment already gives for reg_number: this file IS the institution,
+-- fabricating a starting state rather than pretending to be a signup.
 --
--- Direct INSERT as postgres — the Superadmin path again. The in-app routes are
--- roster_bulk_import (faculty rep) and roster_add_student (class rep, one at a
--- time), which 05_roster_test.sql exercises properly.
+-- school_email is not null is the discriminator (not the old
+-- email_verified_at check, which only ever distinguished OAuth from the now-
+-- retired password path) — every account here is OAuth now, and the auth
+-- trigger (0039) already set school_email/personal_email at signup based on
+-- address domain.
 --
--- claim_method is derived the same way 0019 §2 derives it: an account holding a
--- verified university address is 'oauth', anything else is 'provisional'. In
--- this dataset that maps exactly onto the two signup paths — the
--- @student.chuka.ac.ke accounts come out provider-proven, the @auth.internal
--- ones come out provisional and therefore takeover-eligible, which is what
--- 06_claim_and_takeover_test.sql needs to have something real to work against.
+-- reg_number is then nulled for everyone. A genuine Flow 1 or Flow 2 account
+-- never has users.reg_number set (0002/0019's invariant, unchanged by this
+-- plan) — leaving it populated here would make the seed data inconsistent
+-- with what a real account looks like.
 do $$
-declare
-  v_fst  uuid := '22222222-0000-4000-8000-000000000001';
-  v_fhss uuid := '22222222-0000-4000-8000-000000000002';
 begin
-  -- Students who are already in a cohort: rostered AND claimed.
-  insert into student_roster (
-    reg_number, first_name, last_name, middle_name,
-    cohort_id, claimed_by, claimed_at, claim_method, added_by
-  )
-  select
-    u.reg_number, u.first_name, u.last_name, u.middle_name,
-    u.cohort_id, u.id, now(),
-    case when u.email_verified_at is not null then 'oauth' else 'provisional' end::claim_method,
-    case when d.faculty_id = 'aaaaaaaa-0000-4000-8000-000000000001'::uuid then v_fst else v_fhss end
-  from users u
-  join cohorts c     on c.id = u.cohort_id
-  join programmes p  on p.id = c.programme_id
-  join departments d on d.id = p.department_id
-  where u.reg_number is not null
-    -- faculty_rep included deliberately: they are students too, so they hold a
-    -- claimed roster row like anyone else. Leaving them out would strip their
-    -- reg_number in the cleanup at the end of this block, which is exactly the
-    -- old "faculty reps have no registration number" assumption reasserting
-    -- itself through a WHERE clause.
-    and u.role in ('student', 'class_rep', 'faculty_rep');
-
-  -- Students with a registration number but no cohort yet — the join-request
-  -- crowd from §10. They get UNCLAIMED rows in whichever cohort their number
-  -- resolves to, which is the realistic state a rep sees: "on the roll, has not
-  -- signed up yet". Anyone whose cohort does not exist (…054 is an EB3 2026
-  -- intake, and there is no BSC-ACS 2026) is skipped by the join, which is
-  -- itself a fair representation of a student the institution knows about
-  -- before their cohort has been created.
-  insert into student_roster (
-    reg_number, first_name, last_name, middle_name, cohort_id, added_by
-  )
-  select
-    u.reg_number, u.first_name, u.last_name, u.middle_name, c.id,
-    case when d.faculty_id = 'aaaaaaaa-0000-4000-8000-000000000001'::uuid then v_fst else v_fhss end
-  from users u
-  cross join lateral parse_reg_number(u.reg_number) pr
-  join cohorts c     on c.programme_id = pr.programme_id
-                    and c.intake_year  = pr.admission_year
-  join programmes p  on p.id = c.programme_id
-  join departments d on d.id = p.department_id
-  where u.reg_number is not null
-    and u.cohort_id is null
-    and u.role = 'student'
-    and pr.programme_id is not null
-    and not exists (select 1 from student_roster r where r.reg_number = u.reg_number);
-
-  -- seed_user wrote reg_number onto every account at creation time, because it
-  -- had to run long before cohorts (and therefore the roster) existed. Now that
-  -- the roster is built, take it back off anyone who has not actually claimed a
-  -- row.
-  --
-  -- After 0019 the invariant is: users.reg_number is not null IF AND ONLY IF
-  -- that account claimed a roster row. An account carrying a registration
-  -- number it never proved is precisely the pre-Phase-R state this whole phase
-  -- exists to delete, and leaving four of them in the dev dataset would quietly
-  -- teach the wrong shape to anyone reading it — and to any test written
-  -- against it.
+  -- parse_reg_number(u.reg_number) can't be called directly in this UPDATE's
+  -- FROM clause — the target table's own alias isn't a member of the FROM
+  -- list, so a function call there can't reference it (42P10). Routing the
+  -- parse through a self-joined subquery sidesteps that: the subquery reads
+  -- from users like any other FROM item, so its call to parse_reg_number can
+  -- reference that copy's reg_number, and the outer UPDATE joins back to it
+  -- by id.
   update users u
-  set reg_number = null
-  where u.reg_number is not null
-    and not exists (select 1 from student_roster r where r.claimed_by = u.id);
+  set claim_method   = case when u.school_email is not null then 'oauth' else 'provisional' end::claim_method,
+      programme_id   = pr.programme_id,
+      self_sponsored = pr.is_self_sponsored,
+      student_number = pr.student_number,
+      admission_year = pr.admission_year
+  from (
+    select u2.id, (parse_reg_number(u2.reg_number)).*
+    from users u2
+    where u2.reg_number is not null
+      and u2.role in ('student', 'class_rep', 'faculty_rep')
+  ) pr
+  where u.id = pr.id;
+
+  update users set reg_number = null where reg_number is not null;
 end $$;
 
 
@@ -838,7 +809,7 @@ end $$;
 -- — so the assistant rank, i.e. the whole "fallback if the primary needs
 -- replacing" mechanism from DISCOVERY, was unreachable from inside the app.
 --
--- Runs after §9.5 because promote_class_rep reads the target's roster claim.
+-- Runs after §9.5 because promote_class_rep reads the target's claim_method.
 --
 -- Both targets are OAuth-claimed accounts (Brian and Naomi are the two
 -- @student.chuka.ac.ke assistants), so neither needs the identity attestation.
@@ -1288,10 +1259,10 @@ begin
     r.attachments, r.audit_rows, r.notifications;
   raise notice '';
   raise notice 'Password for every account: chuka1234';
-  raise notice '  class rep (BSC-CS 2023) : eb1.67277.23@auth.internal';
-  raise notice '  class rep (BSC-CS 2024) : eb1.71004.24@auth.internal';
+  raise notice '  class rep (BSC-CS 2023) : eb1.67277.23@student.chuka.ac.ke';
+  raise notice '  class rep (BSC-CS 2024) : eb1.71004.24@student.chuka.ac.ke';
   raise notice '  class rep (BSC-ACS 2023): eb3.67891.23@student.chuka.ac.ke';
-  raise notice '  class rep (BA-CRIM 2024): ba2.70115.24@auth.internal';
+  raise notice '  class rep (BA-CRIM 2024): ba2.70115.24@student.chuka.ac.ke';
   raise notice '  faculty rep (FST)       : eb1.66001.23@student.chuka.ac.ke';
   raise notice '  faculty rep (FHSS)      : ba2.70001.24@student.chuka.ac.ke';
   raise notice '  plain student           : eb1.67312.23@student.chuka.ac.ke';
