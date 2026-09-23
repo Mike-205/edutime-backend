@@ -18,8 +18,10 @@ is here so nobody has to re-derive the workflow from scratch.
   gh pr create --base dev
   ```
 
-- `dev` gets PR'd into `main` periodically, once a chunk of work is stable — the
-  same way Plan 5 (the auth retirement) shipped.
+- `dev` gets PR'd into `main` periodically, once a chunk of work is stable. This is
+  the model going forward — Plan 5 (the auth retirement) actually merged straight
+  into `main` (PR #1), before this `dev` branch existed, so it predates this
+  workflow rather than being an example of it.
 - Note: `main`'s branch protection has `enforce_admins` set to `false`, so the repo
   owner can technically still push directly if truly necessary. Treat "always go
   through a PR into `dev`" as the convention regardless — the protection is a safety
